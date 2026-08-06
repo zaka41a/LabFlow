@@ -1,0 +1,29 @@
+.DS_Store
+.idea/
+.vscode/
+*.iml
+
+# Java / Maven
+backend/target/
+*.log
+
+# Node / Vite
+frontend/node_modules/
+frontend/dist/
+frontend/coverage/
+frontend/*.tsbuildinfo
+frontend/.vite/
+frontend/.env.local
+frontend/.env.*.local
+
+# Terraform
+infra/.terraform/
+infra/*.tfstate
+infra/*.tfstate.*
+infra/.terraform.lock.hcl
+infra/*.tfvars
+
+# Secrets
+.env
+*.pem
+*.key

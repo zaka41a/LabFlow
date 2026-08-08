@@ -1,5 +1,6 @@
 package de.fhaachen.labflow.security;
 
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.security.oauth2.core.oidc.OidcIdToken;
@@ -9,6 +10,7 @@ import java.time.Instant;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class LabFlowOidcUserTest {
 
@@ -89,7 +91,7 @@ class LabFlowOidcUserTest {
                 .subject("4000")
                 .claim("preferred_username", "additional-user")
                 .claim("name", "Additional User")
-                .claim("groups", List.of(group))
+                .claim("groups_direct", List.of(group))
                 .build();
         LabFlowOidcRoleMappingProperties mapping = switch (role) {
             case BORROWER -> mapping(List.of(group), List.of(), List.of());
@@ -103,6 +105,36 @@ class LabFlowOidcUserTest {
         );
 
         assertThat(principal.role()).isEqualTo(role);
+    }
+
+    @Test
+    void ignoresRoleGroupsInheritedFromAParentGitLabGroup() {
+        Instant issuedAt = Instant.parse("2026-08-08T18:45:00Z");
+        OidcIdToken token = OidcIdToken.withTokenValue("gitlab-inherited-groups-token")
+                .issuedAt(issuedAt)
+                .expiresAt(issuedAt.plusSeconds(300))
+                .issuer("https://git-ce.rwth-aachen.de")
+                .subject("4001")
+                .claim("preferred_username", "parent-group-owner")
+                .claim("name", "Parent Group Owner")
+                .claim("groups", List.of(
+                        "lsit-2026/roles/labflow/borrower",
+                        "lsit-2026/roles/labflow/lab-manager",
+                        "lsit-2026/roles/labflow/technician"
+                ))
+                .build();
+        LabFlowOidcRoleMappingProperties mapping = mapping(
+                List.of("lsit-2026/roles/labflow/borrower"),
+                List.of("lsit-2026/roles/labflow/lab-manager"),
+                List.of("lsit-2026/roles/labflow/technician")
+        );
+
+        assertThatThrownBy(() -> LabFlowOidcUser.from(
+                        new DefaultOidcUser(List.of(), token, "sub"),
+                        mapping
+                ))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("no LabFlow role assignment");
     }
 
     private static LabFlowOidcRoleMappingProperties emptyRoleMapping() {

@@ -82,7 +82,6 @@ public final class LabFlowOidcUser implements OidcUser, LabFlowPrincipal {
         addClaimValues(identities, source, "preferred_username");
         addClaimValues(identities, source, "nickname");
         addClaimValues(identities, source, "email");
-        addClaimValues(identities, source, "groups");
         addClaimValues(identities, source, "groups_direct");
         addClaimValues(identities, source, "https://gitlab.org/claims/groups/owner");
         addClaimValues(identities, source, "https://gitlab.org/claims/groups/maintainer");

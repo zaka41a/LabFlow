@@ -5,6 +5,8 @@
 
 # Java / Maven
 backend/target/
+.ci-tools/
+.m2/
 *.log
 
 # Node / Vite

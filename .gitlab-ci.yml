@@ -28,11 +28,15 @@ variables:
 
 backend:test:
   stage: test
-  image: maven:3.9.11-eclipse-temurin-21-alpine
   cache:
     key: maven-$CI_COMMIT_REF_SLUG
     paths:
+      - .ci-tools/jdk-21.0.12+8/
+      - .ci-tools/apache-maven-3.9.11/
       - .m2/repository
+  before_script:
+    - source ci/bootstrap-java.sh
+    - source ci/bootstrap-maven.sh
   script:
     - cd backend
     - mvn $MAVEN_CLI_OPTS verify
@@ -43,14 +47,15 @@ backend:test:
 
 frontend:test:
   stage: test
-  image: node:22.19.0-alpine
   cache:
     key:
       files:
         - frontend/package-lock.json
     paths:
+      - .ci-tools/node-v22.19.0-linux-x64/
       - .npm/
   before_script:
+    - source ci/bootstrap-node.sh
     - cd frontend
     - npm ci --cache "$CI_PROJECT_DIR/.npm" --prefer-offline --no-audit --no-fund
   script:
@@ -65,19 +70,14 @@ frontend:test:
 
 tofu:validate:
   stage: test
-  image:
-    name: ghcr.io/opentofu/opentofu:1.12.5
-    entrypoint: [""]
   script:
+    - tofu version
     - cd infra
     - tofu fmt -check -recursive
     - tofu init -backend=false
     - tofu validate
 
 .tofu_remote_state:
-  image:
-    name: ghcr.io/opentofu/opentofu:1.12.5
-    entrypoint: [""]
   id_tokens:
     AZURE_OIDC_TOKEN:
       aud: api://AzureADTokenExchange
@@ -111,7 +111,7 @@ tofu:plan:
       - infra/labflow.tfplan
     expire_in: 1 day
   rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $ARM_CLIENT_ID && $ARM_TENANT_ID && $ARM_SUBSCRIPTION_ID'
 
 azure:provision:
   extends: .tofu_remote_state
@@ -136,14 +136,14 @@ azure:provision:
   when: manual
   allow_failure: false
   rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $ARM_CLIENT_ID && $ARM_TENANT_ID && $ARM_SUBSCRIPTION_ID'
 
 .azure_cli:
-  image: mcr.microsoft.com/azure-cli:2.77.0
   id_tokens:
     AZURE_OIDC_TOKEN:
       aud: api://AzureADTokenExchange
   before_script:
+    - az version
     - >-
       az login --service-principal
       --username "$ARM_CLIENT_ID"
@@ -171,7 +171,7 @@ azure:image:
       --image "labflow-frontend:latest"
       frontend
   rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $ARM_CLIENT_ID && $ARM_TENANT_ID && $ARM_SUBSCRIPTION_ID'
 
 azure:deploy:
   extends: .azure_cli
@@ -193,11 +193,10 @@ azure:deploy:
       "/usr/local/sbin/labflow-acr-login"
       "cd /opt/labflow && docker compose pull && docker compose up --detach --remove-orphans"
   rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $ARM_CLIENT_ID && $ARM_TENANT_ID && $ARM_SUBSCRIPTION_ID'
 
 azure:verify:
   stage: verify
-  image: curlimages/curl:8.12.1
   needs:
     - job: azure:provision
       artifacts: true
@@ -209,7 +208,7 @@ azure:verify:
     name: azure/development
     url: $APPLICATION_URL
   rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $ARM_CLIENT_ID && $ARM_TENANT_ID && $ARM_SUBSCRIPTION_ID'
 
 azure:destroy:
   extends: .tofu_remote_state
@@ -223,4 +222,4 @@ azure:destroy:
   when: manual
   allow_failure: true
   rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $ARM_CLIENT_ID && $ARM_TENANT_ID && $ARM_SUBSCRIPTION_ID'

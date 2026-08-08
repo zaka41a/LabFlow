@@ -3,9 +3,10 @@ package de.fhaachen.labflow.adapter.rest;
 import de.fhaachen.labflow.application.EquipmentService;
 import de.fhaachen.labflow.domain.Equipment;
 import de.fhaachen.labflow.domain.EquipmentStatus;
+import de.fhaachen.labflow.security.LabFlowPrincipal;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -21,8 +22,8 @@ public class DashboardController {
     }
 
     @GetMapping("/summary")
-    public DashboardSummary summary(@RequestParam(required = false) String labId) {
-        List<Equipment> equipment = equipmentService.findAll(labId);
+    public DashboardSummary summary(@AuthenticationPrincipal LabFlowPrincipal user) {
+        List<Equipment> equipment = equipmentService.findAll(user.labId());
         return new DashboardSummary(
                 equipment.size(),
                 count(equipment, EquipmentStatus.AVAILABLE),

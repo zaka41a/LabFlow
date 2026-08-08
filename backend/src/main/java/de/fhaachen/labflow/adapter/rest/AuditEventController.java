@@ -1,7 +1,7 @@
 package de.fhaachen.labflow.adapter.rest;
 
-import de.fhaachen.labflow.application.EquipmentService;
-import de.fhaachen.labflow.domain.Equipment;
+import de.fhaachen.labflow.application.LoanRequestService;
+import de.fhaachen.labflow.domain.AuditEvent;
 import de.fhaachen.labflow.security.LabFlowPrincipal;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -11,17 +11,17 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/equipment")
-public class EquipmentController {
+@RequestMapping("/api/audit-events")
+public class AuditEventController {
 
-    private final EquipmentService service;
+    private final LoanRequestService service;
 
-    public EquipmentController(EquipmentService service) {
+    public AuditEventController(LoanRequestService service) {
         this.service = service;
     }
 
     @GetMapping
-    public List<Equipment> findAll(@AuthenticationPrincipal LabFlowPrincipal user) {
-        return service.findAll(user.labId());
+    public List<AuditEvent> findAll(@AuthenticationPrincipal LabFlowPrincipal user) {
+        return service.findAuditEvents(RestActorMapper.from(user));
     }
 }

@@ -1,9 +1,24 @@
 spring:
   application:
     name: labflow-backend
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+  jackson:
+    deserialization:
+      fail-on-null-for-primitives: false
 
 server:
   port: ${SERVER_PORT:8080}
+  shutdown: graceful
+  forward-headers-strategy: framework
+  servlet:
+    session:
+      timeout: 30m
+      cookie:
+        name: LABFLOW_SESSION
+        http-only: true
+        secure: ${LABFLOW_SESSION_SECURE:false}
+        same-site: lax
 
 management:
   endpoints:
@@ -22,3 +37,32 @@ info:
 labflow:
   web:
     frontend-origin: ${LABFLOW_FRONTEND_ORIGIN:http://localhost:5173}
+  storage:
+    mode: ${LABFLOW_STORAGE_MODE:memory}
+    connection-string: ${AZURE_STORAGE_CONNECTION_STRING:}
+    container: ${AZURE_STORAGE_CONTAINER:labflow}
+  security:
+    oidc:
+      enabled: false
+    users:
+      - id: 10000000-0000-0000-0000-000000000001
+        username: borrower@labflow.local
+        password-hash: '${LABFLOW_BORROWER_PASSWORD_HASH:$2y$12$JoLuE1NqSbOvCkBFJeRLruj8urNfg.UTwFeKFuIO5lE6o8GqHUnAy}'
+        display-name: Zakaria Sabiri
+        lab-id: FH_AACHEN
+        lab-name: Labor FH Aachen
+        role: BORROWER
+      - id: 10000000-0000-0000-0000-000000000002
+        username: manager@labflow.local
+        password-hash: '${LABFLOW_MANAGER_PASSWORD_HASH:$2y$12$JKjqAbFsH3rTC6J474/GZuQzeC.TFIejyjNK4oGcPQ4RQpNG6npMy}'
+        display-name: Fihi Saad
+        lab-id: FH_AACHEN
+        lab-name: Labor FH Aachen
+        role: LAB_MANAGER
+      - id: 10000000-0000-0000-0000-000000000003
+        username: technician@labflow.local
+        password-hash: '${LABFLOW_TECHNICIAN_PASSWORD_HASH:$2y$12$z6C4knDL.YDLr.Fg62SxkutlGyPKvXWzmebi05UGnnjnD6mMUKXKa}'
+        display-name: Othmane Tayani
+        lab-id: FH_AACHEN
+        lab-name: Labor FH Aachen
+        role: TECHNICIAN

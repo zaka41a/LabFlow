@@ -19,15 +19,17 @@ class LoanRequestTest {
 
         LoanRequest submitted = draft.submit(CREATED_AT.plusSeconds(60));
         LoanRequest approved = submitted.approve(
-                LocalDate.of(2026, 8, 20),
+                LocalDate.of(2026, 8, 19),
+                null,
                 CREATED_AT.plusSeconds(120)
         );
         LoanRequest checkedOut = approved.checkout(CREATED_AT.plusSeconds(180));
         LoanRequest returned = checkedOut.returnEquipment(CREATED_AT.plusSeconds(240));
 
         assertThat(submitted.status()).isEqualTo(LoanStatus.SUBMITTED);
+        assertThat(submitted.submittedAt()).isEqualTo(CREATED_AT.plusSeconds(60));
         assertThat(approved.status()).isEqualTo(LoanStatus.APPROVED);
-        assertThat(approved.dueDate()).isEqualTo(LocalDate.of(2026, 8, 20));
+        assertThat(approved.dueDate()).isEqualTo(LocalDate.of(2026, 8, 19));
         assertThat(checkedOut.status()).isEqualTo(LoanStatus.CHECKED_OUT);
         assertThat(returned.status()).isEqualTo(LoanStatus.RETURNED);
     }
@@ -43,9 +45,13 @@ class LoanRequestTest {
     void validatesRequestedPeriod() {
         assertThatThrownBy(() -> LoanRequest.draft(
                 UUID.randomUUID(),
+                "LF-2026-TEST",
                 UUID.randomUUID(),
-                "borrower-1",
+                UUID.randomUUID(),
+                "Test Borrower",
                 "LAB_A",
+                "Test purpose",
+                null,
                 LocalDate.of(2026, 8, 10),
                 LocalDate.of(2026, 8, 9),
                 CREATED_AT
@@ -55,9 +61,13 @@ class LoanRequestTest {
     private LoanRequest draft() {
         return LoanRequest.draft(
                 UUID.fromString("10000000-0000-0000-0000-000000000001"),
+                "LF-2026-0001",
                 UUID.fromString("20000000-0000-0000-0000-000000000001"),
-                "borrower-1",
+                UUID.fromString("30000000-0000-0000-0000-000000000001"),
+                "Test Borrower",
                 "LAB_A",
+                "Test purpose",
+                null,
                 LocalDate.of(2026, 8, 10),
                 LocalDate.of(2026, 8, 19),
                 CREATED_AT

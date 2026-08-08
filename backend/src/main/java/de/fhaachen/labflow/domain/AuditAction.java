@@ -1,0 +1,11 @@
+package de.fhaachen.labflow.domain;
+
+public enum AuditAction {
+    REQUEST_CREATED,
+    REQUEST_SUBMITTED,
+    REQUEST_APPROVED,
+    REQUEST_REJECTED,
+    REQUEST_CANCELLED,
+    EQUIPMENT_CHECKED_OUT,
+    EQUIPMENT_RETURNED
+}

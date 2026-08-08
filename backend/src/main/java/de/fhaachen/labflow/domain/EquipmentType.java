@@ -6,5 +6,8 @@ public enum EquipmentType {
     CAMERA,
     MICROCONTROLLER,
     MEASURING_DEVICE,
+    POWER_TOOL,
+    SOLDERING_EQUIPMENT,
+    LABORATORY_DEVICE,
     OTHER
 }

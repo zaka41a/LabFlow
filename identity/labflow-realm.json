@@ -1,0 +1,142 @@
+{
+  "realm": "labflow",
+  "displayName": "LabFlow FH Aachen",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "resetPasswordAllowed": false,
+  "rememberMe": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "clients": [
+    {
+      "clientId": "labflow-web",
+      "name": "LabFlow Web",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": [
+        "http://localhost/login/oauth2/code/labflow",
+        "http://localhost:5173/login/oauth2/code/labflow"
+      ],
+      "webOrigins": [
+        "http://localhost",
+        "http://localhost:5173"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      },
+      "protocol": "openid-connect",
+      "protocolMappers": [
+        {
+          "name": "LabFlow role",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "labflow_role",
+            "claim.name": "labflow_role",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "multivalued": "false"
+          }
+        },
+        {
+          "name": "Laboratory identifier",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "lab_id",
+            "claim.name": "lab_id",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "multivalued": "false"
+          }
+        },
+        {
+          "name": "Laboratory name",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "lab_name",
+            "claim.name": "lab_name",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "multivalued": "false"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "borrower@labflow.local",
+      "email": "borrower@labflow.local",
+      "firstName": "Zakaria",
+      "lastName": "Sabiri",
+      "enabled": true,
+      "emailVerified": true,
+      "attributes": {
+        "labflow_role": ["BORROWER"],
+        "lab_id": ["FH_AACHEN"],
+        "lab_name": ["Labor FH Aachen"]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Borrower2026!",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "manager@labflow.local",
+      "email": "manager@labflow.local",
+      "firstName": "Fihi",
+      "lastName": "Saad",
+      "enabled": true,
+      "emailVerified": true,
+      "attributes": {
+        "labflow_role": ["LAB_MANAGER"],
+        "lab_id": ["FH_AACHEN"],
+        "lab_name": ["Labor FH Aachen"]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Manager2026!",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "technician@labflow.local",
+      "email": "technician@labflow.local",
+      "firstName": "Othmane",
+      "lastName": "Tayani",
+      "enabled": true,
+      "emailVerified": true,
+      "attributes": {
+        "labflow_role": ["TECHNICIAN"],
+        "lab_id": ["FH_AACHEN"],
+        "lab_name": ["Labor FH Aachen"]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Technician2026!",
+          "temporary": false
+        }
+      ]
+    }
+  ]
+}

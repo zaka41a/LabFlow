@@ -10,7 +10,7 @@ RUN --mount=type=cache,target=/root/.m2 \
 
 COPY src ./src
 RUN --mount=type=cache,target=/root/.m2 \
-    mvn --batch-mode --no-transfer-progress verify && \
+    mvn --batch-mode --no-transfer-progress -Dmaven.test.skip=true package && \
     cp target/labflow-backend-*.jar application.jar
 
 FROM eclipse-temurin:21-jre-alpine

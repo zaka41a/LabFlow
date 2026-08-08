@@ -18,6 +18,9 @@ public class WebConfiguration implements WebMvcConfigurer {
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/api/**")
                 .allowedOrigins(frontendOrigin)
-                .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS");
+                .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
+                .allowedHeaders("Accept", "Content-Type", "X-CSRF-TOKEN", "X-XSRF-TOKEN")
+                .allowCredentials(true)
+                .maxAge(3600);
     }
 }

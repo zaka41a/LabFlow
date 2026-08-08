@@ -1,0 +1,29 @@
+labflow:
+  security:
+    oidc:
+      enabled: true
+      expected-issuer: ${OIDC_PUBLIC_ISSUER_URI:http://keycloak.localhost:8180/realms/labflow}
+
+spring:
+  security:
+    oauth2:
+      client:
+        registration:
+          labflow:
+            provider: labflow
+            client-id: ${OIDC_CLIENT_ID:labflow-web}
+            client-authentication-method: none
+            authorization-grant-type: authorization_code
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+            scope:
+              - openid
+              - profile
+              - email
+            client-name: FH Aachen SSO
+        provider:
+          labflow:
+            authorization-uri: ${OIDC_AUTHORIZATION_URI:http://keycloak.localhost:8180/realms/labflow/protocol/openid-connect/auth}
+            token-uri: ${OIDC_TOKEN_URI:http://keycloak:8080/realms/labflow/protocol/openid-connect/token}
+            jwk-set-uri: ${OIDC_JWK_SET_URI:http://keycloak:8080/realms/labflow/protocol/openid-connect/certs}
+            user-info-uri: ${OIDC_USER_INFO_URI:http://keycloak:8080/realms/labflow/protocol/openid-connect/userinfo}
+            user-name-attribute: sub

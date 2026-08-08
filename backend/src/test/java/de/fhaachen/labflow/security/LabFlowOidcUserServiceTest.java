@@ -25,7 +25,10 @@ class LabFlowOidcUserServiceTest {
                 .claim("name", "Incomplete Identity")
                 .build();
         DefaultOidcUser identity = new DefaultOidcUser(List.of(), token, "sub");
-        LabFlowOidcUserService service = new LabFlowOidcUserService(ignored -> identity);
+        LabFlowOidcUserService service = new LabFlowOidcUserService(
+                ignored -> identity,
+                emptyRoleMapping()
+        );
 
         assertThatThrownBy(() -> service.loadUser(null))
                 .isInstanceOfSatisfying(OAuth2AuthenticationException.class, exception -> {
@@ -33,7 +36,17 @@ class LabFlowOidcUserServiceTest {
                             .isEqualTo(LabFlowOidcUserService.INVALID_IDENTITY_ERROR);
                     assertThat(exception.getCause())
                             .isInstanceOf(IllegalArgumentException.class)
-                            .hasMessageContaining("lab_id");
+                            .hasMessageContaining("role assignment");
                 });
+    }
+
+    private static LabFlowOidcRoleMappingProperties emptyRoleMapping() {
+        return new LabFlowOidcRoleMappingProperties(
+                List.of(),
+                List.of(),
+                List.of(),
+                "FH_AACHEN",
+                "Labor FH Aachen"
+        );
     }
 }

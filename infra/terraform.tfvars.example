@@ -7,11 +7,22 @@ borrower_password_hash   = "$2y$12$replace-with-a-real-hash"
 manager_password_hash    = "$2y$12$replace-with-a-real-hash"
 technician_password_hash = "$2y$12$replace-with-a-real-hash"
 
-# Register this public client with the identity provider. Its redirect URI is:
-# http://<application-ip>/login/oauth2/code/labflow
-oidc_client_id         = "labflow-web"
-oidc_public_issuer_uri = "https://identity.example.edu/realms/labflow"
-oidc_authorization_uri = "https://identity.example.edu/realms/labflow/protocol/openid-connect/auth"
-oidc_token_uri         = "https://identity.example.edu/realms/labflow/protocol/openid-connect/token"
-oidc_jwk_set_uri       = "https://identity.example.edu/realms/labflow/protocol/openid-connect/certs"
-oidc_user_info_uri     = "https://identity.example.edu/realms/labflow/protocol/openid-connect/userinfo"
+# Register a confidential OAuth application in the RWTH GitLab with scopes
+# openid, profile and email. For name_suffix = "team42", use this redirect URI:
+# http://labflow-dev-team42.germanywestcentral.cloudapp.azure.com/login/oauth2/code/labflow
+oidc_client_id     = "replace-with-gitlab-application-id"
+oidc_client_secret = "replace-with-gitlab-application-secret"
+
+# GitLab usernames and role groups can be combined.
+oidc_borrower_identities = [
+  "zaka41a",
+  "lsit-2026/roles/labflow/borrower"
+]
+oidc_manager_identities = [
+  "SaadFihi",
+  "lsit-2026/roles/labflow/lab-manager"
+]
+oidc_technician_identities = [
+  "othmane022-jj",
+  "lsit-2026/roles/labflow/technician"
+]

@@ -1,6 +1,11 @@
 output "application_url" {
   description = "Public URL of the LabFlow web application."
-  value       = "http://${azurerm_public_ip.application.ip_address}"
+  value       = "http://${azurerm_public_ip.application.fqdn}"
+}
+
+output "oidc_redirect_uri" {
+  description = "Callback URI to register in the GitLab OpenID Connect application."
+  value       = "http://${azurerm_public_ip.application.fqdn}/login/oauth2/code/labflow"
 }
 
 output "application_public_ip" {

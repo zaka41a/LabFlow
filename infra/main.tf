@@ -75,6 +75,7 @@ resource "azurerm_public_ip" "application" {
   location            = azurerm_resource_group.main.location
   allocation_method   = "Static"
   sku                 = "Standard"
+  domain_name_label   = local.resource_prefix
 
   tags = azurerm_resource_group.main.tags
 }
@@ -162,21 +163,26 @@ resource "azurerm_linux_virtual_machine" "application" {
   }
 
   custom_data = base64encode(templatefile("${path.module}/cloud-init.yaml.tftpl", {
-    registry_name             = azurerm_container_registry.main.name
-    registry_server           = azurerm_container_registry.main.login_server
-    image_tag                 = var.image_tag
-    application_origin        = "http://${azurerm_public_ip.application.ip_address}"
-    storage_connection_string = azurerm_storage_account.main.primary_connection_string
-    borrower_password_hash    = replace(var.borrower_password_hash, "$", "$$")
-    manager_password_hash     = replace(var.manager_password_hash, "$", "$$")
-    technician_password_hash  = replace(var.technician_password_hash, "$", "$$")
-    oidc_client_id            = var.oidc_client_id
-    oidc_public_issuer_uri    = var.oidc_public_issuer_uri
-    oidc_authorization_uri    = var.oidc_authorization_uri
-    oidc_form_action_origin   = local.oidc_form_action_origin
-    oidc_token_uri            = var.oidc_token_uri
-    oidc_jwk_set_uri          = var.oidc_jwk_set_uri
-    oidc_user_info_uri        = var.oidc_user_info_uri
+    registry_name              = azurerm_container_registry.main.name
+    registry_server            = azurerm_container_registry.main.login_server
+    image_tag                  = var.image_tag
+    application_origin         = "http://${azurerm_public_ip.application.fqdn}"
+    storage_connection_string  = azurerm_storage_account.main.primary_connection_string
+    borrower_password_hash     = replace(var.borrower_password_hash, "$", "$$")
+    manager_password_hash      = replace(var.manager_password_hash, "$", "$$")
+    technician_password_hash   = replace(var.technician_password_hash, "$", "$$")
+    oidc_client_id             = var.oidc_client_id
+    oidc_client_secret         = replace(var.oidc_client_secret, "$", "$$")
+    oidc_client_auth_method    = var.oidc_client_authentication_method
+    oidc_public_issuer_uri     = var.oidc_public_issuer_uri
+    oidc_authorization_uri     = var.oidc_authorization_uri
+    oidc_form_action_origin    = local.oidc_form_action_origin
+    oidc_token_uri             = var.oidc_token_uri
+    oidc_jwk_set_uri           = var.oidc_jwk_set_uri
+    oidc_user_info_uri         = var.oidc_user_info_uri
+    oidc_borrower_identities   = join(",", var.oidc_borrower_identities)
+    oidc_manager_identities    = join(",", var.oidc_manager_identities)
+    oidc_technician_identities = join(",", var.oidc_technician_identities)
   }))
 
   tags = azurerm_resource_group.main.tags

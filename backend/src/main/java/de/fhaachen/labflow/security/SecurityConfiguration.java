@@ -31,7 +31,10 @@ import java.util.stream.Collectors;
 
 @Configuration(proxyBeanMethods = false)
 @EnableMethodSecurity
-@EnableConfigurationProperties(LabFlowSecurityProperties.class)
+@EnableConfigurationProperties({
+        LabFlowSecurityProperties.class,
+        LabFlowOidcRoleMappingProperties.class
+})
 public class SecurityConfiguration {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SecurityConfiguration.class);

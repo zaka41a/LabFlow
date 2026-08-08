@@ -78,31 +78,83 @@ variable "technician_password_hash" {
 }
 
 variable "oidc_client_id" {
-  description = "Public OpenID Connect client registered for the LabFlow web application."
+  description = "Client identifier of the confidential GitLab OpenID Connect application."
   type        = string
+}
+
+variable "oidc_client_secret" {
+  description = "Client secret of the confidential GitLab OpenID Connect application."
+  type        = string
+  sensitive   = true
+}
+
+variable "oidc_client_authentication_method" {
+  description = "OAuth client authentication method used at the token endpoint."
+  type        = string
+  default     = "client_secret_basic"
+
+  validation {
+    condition = contains([
+      "client_secret_basic",
+      "client_secret_post"
+    ], var.oidc_client_authentication_method)
+    error_message = "Use client_secret_basic or client_secret_post."
+  }
 }
 
 variable "oidc_public_issuer_uri" {
   description = "Issuer URI contained in and validated against OpenID Connect ID tokens."
   type        = string
+  default     = "https://git-ce.rwth-aachen.de"
 }
 
 variable "oidc_authorization_uri" {
   description = "Browser-accessible OpenID Connect authorization endpoint."
   type        = string
+  default     = "https://git-ce.rwth-aachen.de/oauth/authorize"
 }
 
 variable "oidc_token_uri" {
   description = "OpenID Connect token endpoint accessible from the backend container."
   type        = string
+  default     = "https://git-ce.rwth-aachen.de/oauth/token"
 }
 
 variable "oidc_jwk_set_uri" {
   description = "OpenID Connect JSON Web Key Set endpoint accessible from the backend container."
   type        = string
+  default     = "https://git-ce.rwth-aachen.de/oauth/discovery/keys"
 }
 
 variable "oidc_user_info_uri" {
   description = "OpenID Connect UserInfo endpoint accessible from the backend container."
   type        = string
+  default     = "https://git-ce.rwth-aachen.de/oauth/userinfo"
+}
+
+variable "oidc_borrower_identities" {
+  description = "GitLab usernames or group paths allowed to use LabFlow as Borrowers."
+  type        = list(string)
+  default = [
+    "zaka41a",
+    "lsit-2026/roles/labflow/borrower"
+  ]
+}
+
+variable "oidc_manager_identities" {
+  description = "GitLab usernames or group paths allowed to use LabFlow as Lab Managers."
+  type        = list(string)
+  default = [
+    "SaadFihi",
+    "lsit-2026/roles/labflow/lab-manager"
+  ]
+}
+
+variable "oidc_technician_identities" {
+  description = "GitLab usernames or group paths allowed to use LabFlow as Technicians."
+  type        = list(string)
+  default = [
+    "othmane022-jj",
+    "lsit-2026/roles/labflow/technician"
+  ]
 }

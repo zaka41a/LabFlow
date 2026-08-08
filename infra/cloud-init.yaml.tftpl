@@ -33,11 +33,16 @@ write_files:
             LABFLOW_MANAGER_PASSWORD_HASH: ${jsonencode(manager_password_hash)}
             LABFLOW_TECHNICIAN_PASSWORD_HASH: ${jsonencode(technician_password_hash)}
             OIDC_CLIENT_ID: ${jsonencode(oidc_client_id)}
+            OIDC_CLIENT_SECRET: ${jsonencode(oidc_client_secret)}
+            OIDC_CLIENT_AUTHENTICATION_METHOD: ${jsonencode(oidc_client_auth_method)}
             OIDC_PUBLIC_ISSUER_URI: ${jsonencode(oidc_public_issuer_uri)}
             OIDC_AUTHORIZATION_URI: ${jsonencode(oidc_authorization_uri)}
             OIDC_TOKEN_URI: ${jsonencode(oidc_token_uri)}
             OIDC_JWK_SET_URI: ${jsonencode(oidc_jwk_set_uri)}
             OIDC_USER_INFO_URI: ${jsonencode(oidc_user_info_uri)}
+            LABFLOW_OIDC_BORROWER_IDENTITIES: ${jsonencode(oidc_borrower_identities)}
+            LABFLOW_OIDC_MANAGER_IDENTITIES: ${jsonencode(oidc_manager_identities)}
+            LABFLOW_OIDC_TECHNICIAN_IDENTITIES: ${jsonencode(oidc_technician_identities)}
             JAVA_TOOL_OPTIONS: "-Djdk.httpclient.allowRestrictedHeaders=content-length"
           expose:
             - "8080"

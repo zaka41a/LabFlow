@@ -3,6 +3,12 @@ labflow:
     oidc:
       enabled: true
       expected-issuer: ${OIDC_PUBLIC_ISSUER_URI:http://keycloak.localhost:8180/realms/labflow}
+      mapping:
+        borrowers: ${LABFLOW_OIDC_BORROWER_IDENTITIES:}
+        managers: ${LABFLOW_OIDC_MANAGER_IDENTITIES:}
+        technicians: ${LABFLOW_OIDC_TECHNICIAN_IDENTITIES:}
+        lab-id: ${LABFLOW_OIDC_LAB_ID:FH_AACHEN}
+        lab-name: ${LABFLOW_OIDC_LAB_NAME:Labor FH Aachen}
 
 spring:
   security:
@@ -12,7 +18,8 @@ spring:
           labflow:
             provider: labflow
             client-id: ${OIDC_CLIENT_ID:labflow-web}
-            client-authentication-method: none
+            client-secret: ${OIDC_CLIENT_SECRET:}
+            client-authentication-method: ${OIDC_CLIENT_AUTHENTICATION_METHOD:none}
             authorization-grant-type: authorization_code
             redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
             scope:

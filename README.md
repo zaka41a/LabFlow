@@ -41,7 +41,7 @@ Storage gespeichert; lokal wird Azurite verwendet.
 - Ausgabe und Rückgabe mit Gerätezustand dokumentieren
 - Rollen-, Benutzer- und Laborprüfung im Backend
 - serverseitige Sitzung mit 30 Minuten Inaktivitätslimit
-- OpenID Connect Authorization Code Flow mit PKCE
+- OpenID Connect Authorization Code Flow; lokal mit PKCE, in Azure über GitLab
 - Audit Events und optimistische Parallelitätskontrolle über Blob ETags
 
 ## Geschäftsprozess und Rollen
@@ -134,9 +134,9 @@ Die Datenvolumes von Azurite und Keycloak bleiben beim Stoppen erhalten.
 | Lab Manager | `manager@labflow.local`    | `Manager2026!`    |
 | Technician  | `technician@labflow.local` | `Technician2026!` |
 
-Die Konten funktionieren mit der lokalen Anmeldung und mit dem Button
-**Mit LabFlow SSO anmelden**. **Abmelden** beendet die LabFlow Sitzung und bei
-einer SSO Anmeldung zusätzlich die Keycloak Sitzung.
+Die Konten funktionieren lokal mit der Anmeldung und mit dem Button **Mit
+LabFlow SSO anmelden**. **Abmelden** beendet die LabFlow Sitzung und bei einer
+Keycloak Anmeldung zusätzlich die Sitzung beim lokalen Provider.
 
 Weitere SSO Benutzer werden in Keycloak unter **Users** angelegt. Das Passwort
 wird unter **Credentials** mit `Temporary = Off` gesetzt. Jeder Benutzer
@@ -255,12 +255,17 @@ POST   /api/handover/{id}/return              Technician
 | `AZURE_STORAGE_CONTAINER`         | privater Blob Container         |
 | `LABFLOW_FRONTEND_ORIGIN`         | erlaubte Browser Origin         |
 | `LABFLOW_SESSION_SECURE`          | Session Cookie nur über HTTPS   |
-| `OIDC_CLIENT_ID`                  | öffentliche OIDC Client ID      |
+| `OIDC_CLIENT_ID`                  | OIDC Client ID                  |
+| `OIDC_CLIENT_SECRET`              | Secret eines vertraulichen Clients |
+| `OIDC_CLIENT_AUTHENTICATION_METHOD` | `none` oder `client_secret_basic` |
 | `OIDC_PUBLIC_ISSUER_URI`          | erwarteter Issuer der ID Tokens |
 | `OIDC_AUTHORIZATION_URI`          | Authorization Endpoint          |
 | `OIDC_TOKEN_URI`                  | Token Endpoint                  |
 | `OIDC_JWK_SET_URI`                | Signaturschlüssel               |
 | `OIDC_USER_INFO_URI`              | UserInfo Endpoint               |
+| `LABFLOW_OIDC_BORROWER_IDENTITIES` | GitLab Namen der Borrower       |
+| `LABFLOW_OIDC_MANAGER_IDENTITIES` | GitLab Namen der Lab Manager    |
+| `LABFLOW_OIDC_TECHNICIAN_IDENTITIES` | GitLab Namen der Technicians |
 
 ## GitLab CI und Azure
 
@@ -280,10 +285,28 @@ OpenTofu verwendet den GitLab HTTP Backend State mit Locking. Die VM erhält ein
 Managed Identity und lädt damit die Images aus Azure Container Registry. Ein
 persönliches `az login` auf dem Entwicklungsrechner ist nicht erforderlich.
 
-Für den Cloud Lauf werden geschützte `TF_VAR_*` Werte für Namenssuffix,
-Administratornetz, SSH Schlüssel, Passwort Hashes und OIDC Endpunkte benötigt.
-Die Pipeline verwendet die vorbereitete Identität des Kurs Runners oder
-alternativ eine GitLab OIDC Workload Identity.
+Für Azure wird GitLab RWTH als OpenID Connect Provider verwendet. Vor dem
+ersten Cloud Lauf wird im Team Gruppe `lsit-2026/roles/LabFlow` unter
+**Settings > Applications** eine vertrauliche Anwendung `LabFlow Azure` mit
+den Scopes `openid`, `profile` und `email` angelegt. Für
+`TF_VAR_name_suffix=zaka41a` lautet die Callback URL:
+
+```text
+http://labflow-dev-zaka41a.germanywestcentral.cloudapp.azure.com/login/oauth2/code/labflow
+```
+
+Application ID und Secret werden ausschließlich als geschützte GitLab CI/CD
+Variablen `TF_VAR_oidc_client_id` und `TF_VAR_oidc_client_secret` gespeichert.
+Die Rollen werden standardmäßig den GitLab Namen `zaka41a`, `SaadFihi` und
+`othmane022-jj` zugeordnet. Zusätzlich unterstützt die Konfiguration die
+GitLab Gruppen `lsit-2026/roles/labflow/borrower`, `lab-manager` und
+`technician`. Weitere Konten oder Gruppen können über die drei
+`TF_VAR_oidc_*_identities` Listen ergänzt werden.
+
+Zusätzlich werden geschützte `TF_VAR_*` Werte für Namenssuffix,
+Administratornetz, SSH Schlüssel und Passwort Hashes benötigt. Die Pipeline
+verwendet die vorbereitete Identität des Kurs Runners oder alternativ eine
+GitLab OIDC Workload Identity.
 
 ## Projektstruktur
 

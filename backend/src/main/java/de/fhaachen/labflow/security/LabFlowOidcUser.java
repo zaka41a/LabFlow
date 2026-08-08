@@ -8,10 +8,12 @@ import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 
 public final class LabFlowOidcUser implements OidcUser, LabFlowPrincipal {
@@ -44,19 +46,64 @@ public final class LabFlowOidcUser implements OidcUser, LabFlowPrincipal {
         this.authorities = List.of(new SimpleGrantedAuthority(role.authority()));
     }
 
-    public static LabFlowOidcUser from(OidcUser source) {
+    public static LabFlowOidcUser from(
+            OidcUser source,
+            LabFlowOidcRoleMappingProperties roleMapping
+    ) {
         Objects.requireNonNull(source, "source must not be null");
+        Objects.requireNonNull(roleMapping, "roleMapping must not be null");
 
         String subject = requiredClaim(source, "sub");
         String issuer = source.getIssuer() == null ? "unknown-issuer" : source.getIssuer().toString();
         UUID id = UUID.nameUUIDFromBytes((issuer + "|" + subject).getBytes(StandardCharsets.UTF_8));
         String username = firstClaim(source, "email", "preferred_username");
         String displayName = firstClaim(source, "name", "preferred_username", "email");
-        String labId = requiredClaim(source, "lab_id");
-        String labName = requiredClaim(source, "lab_name");
-        LabFlowRole role = parseRole(requiredClaim(source, "labflow_role"));
+        String roleClaim = optionalClaim(source, "labflow_role");
+        String labId;
+        String labName;
+        LabFlowRole role;
+
+        if (roleClaim != null) {
+            role = parseRole(roleClaim);
+            labId = requiredClaim(source, "lab_id");
+            labName = requiredClaim(source, "lab_name");
+        } else {
+            role = roleMapping.roleFor(identityClaims(source));
+            labId = roleMapping.labId();
+            labName = roleMapping.labName();
+        }
 
         return new LabFlowOidcUser(source, id, username, displayName, labId, labName, role);
+    }
+
+    private static Set<String> identityClaims(OidcUser source) {
+        Set<String> identities = new LinkedHashSet<>();
+        addClaimValues(identities, source, "sub");
+        addClaimValues(identities, source, "preferred_username");
+        addClaimValues(identities, source, "nickname");
+        addClaimValues(identities, source, "email");
+        addClaimValues(identities, source, "groups");
+        addClaimValues(identities, source, "groups_direct");
+        addClaimValues(identities, source, "https://gitlab.org/claims/groups/owner");
+        addClaimValues(identities, source, "https://gitlab.org/claims/groups/maintainer");
+        addClaimValues(identities, source, "https://gitlab.org/claims/groups/developer");
+        return Set.copyOf(identities);
+    }
+
+    private static void addClaimValues(Set<String> identities, OidcUser source, String name) {
+        Object claim = source.getClaim(name);
+        if (claim instanceof Collection<?> values) {
+            values.stream()
+                    .filter(String.class::isInstance)
+                    .map(String.class::cast)
+                    .map(String::trim)
+                    .filter(value -> !value.isBlank())
+                    .forEach(identities::add);
+            return;
+        }
+        if (claim instanceof String value && !value.isBlank()) {
+            identities.add(value.trim());
+        }
     }
 
     private static LabFlowRole parseRole(String claim) {
@@ -79,11 +126,16 @@ public final class LabFlowOidcUser implements OidcUser, LabFlowPrincipal {
     }
 
     private static String requiredClaim(OidcUser source, String name) {
-        String value = source.getClaimAsString(name);
-        if (value == null || value.isBlank()) {
+        String value = optionalClaim(source, name);
+        if (value == null) {
             throw new IllegalArgumentException("OIDC identity is missing claim " + name);
         }
-        return value.trim();
+        return value;
+    }
+
+    private static String optionalClaim(OidcUser source, String name) {
+        String value = source.getClaimAsString(name);
+        return value == null || value.isBlank() ? null : value.trim();
     }
 
     @Override

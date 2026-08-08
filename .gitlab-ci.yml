@@ -23,8 +23,15 @@ variables:
   TF_IN_AUTOMATION: "true"
   TF_INPUT: "false"
   TF_STATE_NAME: "labflow-dev"
-  TF_VAR_subscription_id: $ARM_SUBSCRIPTION_ID
   TF_VAR_image_tag: $CI_COMMIT_SHA
+  LABFLOW_AZURE_AUTH_MODE: "auto"
+  LABFLOW_AZURE_ENABLED: "false"
+
+ci:test:
+  stage: test
+  script:
+    - bash -n ci/*.sh
+    - for test_script in ci/test-*.sh; do bash "$test_script"; done
 
 backend:test:
   stage: test
@@ -81,10 +88,9 @@ tofu:validate:
   id_tokens:
     AZURE_OIDC_TOKEN:
       aud: api://AzureADTokenExchange
-  variables:
-    ARM_USE_OIDC: "true"
   before_script:
-    - export ARM_OIDC_TOKEN="$AZURE_OIDC_TOKEN"
+    - source ci/azure-auth.sh
+    - labflow_configure_azure_auth
     - cd infra
     - >-
       tofu init -reconfigure
@@ -97,11 +103,32 @@ tofu:validate:
       -backend-config="unlock_method=DELETE"
       -backend-config="retry_wait_min=5"
 
+azure:preflight:
+  stage: plan
+  id_tokens:
+    AZURE_OIDC_TOKEN:
+      aud: api://AzureADTokenExchange
+  needs:
+    - backend:test
+    - ci:test
+    - frontend:test
+    - tofu:validate
+  before_script:
+    - source ci/azure-auth.sh
+    - labflow_configure_azure_auth
+  script:
+    - bash ci/azure-preflight.sh
+  when: manual
+  allow_failure: true
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+
 tofu:plan:
   extends: .tofu_remote_state
   stage: plan
   needs:
     - backend:test
+    - ci:test
     - frontend:test
     - tofu:validate
   script:
@@ -111,7 +138,7 @@ tofu:plan:
       - infra/labflow.tfplan
     expire_in: 1 day
   rules:
-    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $ARM_CLIENT_ID && $ARM_TENANT_ID && $ARM_SUBSCRIPTION_ID'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $LABFLOW_AZURE_ENABLED == "true"'
 
 azure:provision:
   extends: .tofu_remote_state
@@ -136,21 +163,15 @@ azure:provision:
   when: manual
   allow_failure: false
   rules:
-    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $ARM_CLIENT_ID && $ARM_TENANT_ID && $ARM_SUBSCRIPTION_ID'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $LABFLOW_AZURE_ENABLED == "true"'
 
 .azure_cli:
   id_tokens:
     AZURE_OIDC_TOKEN:
       aud: api://AzureADTokenExchange
   before_script:
-    - az version
-    - >-
-      az login --service-principal
-      --username "$ARM_CLIENT_ID"
-      --tenant "$ARM_TENANT_ID"
-      --federated-token "$AZURE_OIDC_TOKEN"
-      --allow-no-subscriptions
-    - az account set --subscription "$ARM_SUBSCRIPTION_ID"
+    - source ci/azure-auth.sh
+    - labflow_configure_azure_auth
 
 azure:image:
   extends: .azure_cli
@@ -171,7 +192,7 @@ azure:image:
       --image "labflow-frontend:latest"
       frontend
   rules:
-    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $ARM_CLIENT_ID && $ARM_TENANT_ID && $ARM_SUBSCRIPTION_ID'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $LABFLOW_AZURE_ENABLED == "true"'
 
 azure:deploy:
   extends: .azure_cli
@@ -193,7 +214,7 @@ azure:deploy:
       "/usr/local/sbin/labflow-acr-login"
       "cd /opt/labflow && docker compose pull && docker compose up --detach --remove-orphans"
   rules:
-    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $ARM_CLIENT_ID && $ARM_TENANT_ID && $ARM_SUBSCRIPTION_ID'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $LABFLOW_AZURE_ENABLED == "true"'
 
 azure:verify:
   stage: verify
@@ -208,7 +229,7 @@ azure:verify:
     name: azure/development
     url: $APPLICATION_URL
   rules:
-    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $ARM_CLIENT_ID && $ARM_TENANT_ID && $ARM_SUBSCRIPTION_ID'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $LABFLOW_AZURE_ENABLED == "true"'
 
 azure:destroy:
   extends: .tofu_remote_state
@@ -222,4 +243,4 @@ azure:destroy:
   when: manual
   allow_failure: true
   rules:
-    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $ARM_CLIENT_ID && $ARM_TENANT_ID && $ARM_SUBSCRIPTION_ID'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $LABFLOW_AZURE_ENABLED == "true"'

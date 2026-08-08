@@ -24,7 +24,7 @@ write_files:
           environment:
             SERVER_PORT: "8080"
             SPRING_PROFILES_ACTIVE: oidc
-            LABFLOW_FRONTEND_ORIGIN: "http://localhost"
+            LABFLOW_FRONTEND_ORIGIN: ${jsonencode(application_origin)}
             LABFLOW_STORAGE_MODE: azure
             LABFLOW_SESSION_SECURE: "false"
             AZURE_STORAGE_CONTAINER: labflow
@@ -52,6 +52,8 @@ write_files:
           image: ${registry_server}/labflow-frontend:${image_tag}
           restart: unless-stopped
           init: true
+          environment:
+            LABFLOW_OIDC_FORM_ACTION_ORIGIN: ${jsonencode(oidc_form_action_origin)}
           ports:
             - "80:80"
           depends_on:

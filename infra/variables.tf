@@ -1,8 +1,3 @@
-variable "subscription_id" {
-  description = "Azure subscription used by the deployment."
-  type        = string
-}
-
 variable "location" {
   description = "Azure region for all LabFlow resources."
   type        = string

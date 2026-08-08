@@ -1,8 +1,9 @@
 locals {
-  resource_prefix      = "labflow-${var.environment}-${var.name_suffix}"
-  compact_name         = substr("labflow${var.environment}${var.name_suffix}", 0, 20)
-  storage_account_name = substr("${local.compact_name}st", 0, 24)
-  registry_name        = substr("${local.compact_name}cr", 0, 50)
+  resource_prefix         = "labflow-${var.environment}-${var.name_suffix}"
+  compact_name            = substr("labflow${var.environment}${var.name_suffix}", 0, 20)
+  storage_account_name    = substr("${local.compact_name}st", 0, 24)
+  registry_name           = substr("${local.compact_name}cr", 0, 50)
+  oidc_form_action_origin = regex("^https?://[^/]+", var.oidc_authorization_uri)
 }
 
 resource "azurerm_resource_group" "main" {
@@ -164,6 +165,7 @@ resource "azurerm_linux_virtual_machine" "application" {
     registry_name             = azurerm_container_registry.main.name
     registry_server           = azurerm_container_registry.main.login_server
     image_tag                 = var.image_tag
+    application_origin        = "http://${azurerm_public_ip.application.ip_address}"
     storage_connection_string = azurerm_storage_account.main.primary_connection_string
     borrower_password_hash    = replace(var.borrower_password_hash, "$", "$$")
     manager_password_hash     = replace(var.manager_password_hash, "$", "$$")
@@ -171,6 +173,7 @@ resource "azurerm_linux_virtual_machine" "application" {
     oidc_client_id            = var.oidc_client_id
     oidc_public_issuer_uri    = var.oidc_public_issuer_uri
     oidc_authorization_uri    = var.oidc_authorization_uri
+    oidc_form_action_origin   = local.oidc_form_action_origin
     oidc_token_uri            = var.oidc_token_uri
     oidc_jwk_set_uri          = var.oidc_jwk_set_uri
     oidc_user_info_uri        = var.oidc_user_info_uri

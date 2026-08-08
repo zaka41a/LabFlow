@@ -280,9 +280,10 @@ Ressourcen anzulegen. Die Cloud Jobs werden mit der geschützten Variable
 `LABFLOW_AZURE_ENABLED=true` aktiviert. `azure:provision` bleibt manuell,
 weil der Job kostenpflichtige Ressourcen erstellt.
 
-OpenTofu verwendet den GitLab HTTP Backend State mit Locking. Die VM erhält eine
-Managed Identity und lädt damit die Images aus Azure Container Registry. Ein
-persönliches `az login` auf dem Entwicklungsrechner ist nicht erforderlich.
+OpenTofu verwendet den GitLab HTTP Backend State mit Locking. Die VM lädt die
+privaten Images mit einem auf dem Host geschützten Docker Credential aus Azure
+Container Registry. Ein persönliches `az login` auf dem Entwicklungsrechner ist
+nicht erforderlich.
 
 Für Azure wird GitLab RWTH als OpenID Connect Provider verwendet. Vor dem
 ersten Cloud Lauf wird im Team Gruppe `lsit-2026/roles/LabFlow` unter

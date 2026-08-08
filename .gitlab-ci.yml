@@ -134,6 +134,7 @@ tofu:plan:
   script:
     - tofu plan -out=labflow.tfplan
   artifacts:
+    access: developer
     paths:
       - infra/labflow.tfplan
     expire_in: 1 day

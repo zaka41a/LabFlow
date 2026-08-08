@@ -78,15 +78,19 @@ write_files:
       #!/usr/bin/env bash
       set -Eeuo pipefail
 
-      readonly registry_name="${registry_name}"
+      readonly registry_server="${registry_server}"
+      readonly registry_username="${registry_username}"
+      readonly registry_password=${jsonencode(registry_password)}
       readonly attempts=30
 
       for ((attempt = 1; attempt <= attempts; attempt++)); do
-        if az login --identity --allow-no-subscriptions >/dev/null 2>&1 && \
-          az acr login --name "$${registry_name}" >/dev/null 2>&1; then
+        if printf '%s' "$${registry_password}" | \
+          docker login "$${registry_server}" \
+            --username "$${registry_username}" \
+            --password-stdin >/dev/null 2>&1; then
           exit 0
         fi
-        sleep 20
+        sleep 10
       done
 
       printf 'Unable to authenticate with Azure Container Registry after %s attempts.\n' "$${attempts}" >&2
@@ -118,9 +122,6 @@ write_files:
       WantedBy=multi-user.target
 
 runcmd:
-  - curl -sL https://aka.ms/InstallAzureCLIDeb -o /tmp/install-azure-cli.sh
-  - bash /tmp/install-azure-cli.sh
-  - rm -f /tmp/install-azure-cli.sh
   - systemctl enable --now docker
   - systemctl daemon-reload
   - systemctl enable --now labflow.service

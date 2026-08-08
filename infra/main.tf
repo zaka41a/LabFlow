@@ -48,7 +48,7 @@ resource "azurerm_container_registry" "main" {
   resource_group_name = azurerm_resource_group.main.name
   location            = azurerm_resource_group.main.location
   sku                 = "Basic"
-  admin_enabled       = false
+  admin_enabled       = true
 
   tags = azurerm_resource_group.main.tags
 }
@@ -146,10 +146,6 @@ resource "azurerm_linux_virtual_machine" "application" {
     public_key = var.admin_ssh_public_key
   }
 
-  identity {
-    type = "SystemAssigned"
-  }
-
   os_disk {
     caching              = "ReadWrite"
     storage_account_type = "Standard_LRS"
@@ -163,8 +159,9 @@ resource "azurerm_linux_virtual_machine" "application" {
   }
 
   custom_data = base64encode(templatefile("${path.module}/cloud-init.yaml.tftpl", {
-    registry_name              = azurerm_container_registry.main.name
     registry_server            = azurerm_container_registry.main.login_server
+    registry_username          = azurerm_container_registry.main.admin_username
+    registry_password          = azurerm_container_registry.main.admin_password
     image_tag                  = var.image_tag
     application_origin         = "http://${azurerm_public_ip.application.fqdn}"
     storage_connection_string  = azurerm_storage_account.main.primary_connection_string
@@ -190,10 +187,4 @@ resource "azurerm_linux_virtual_machine" "application" {
   depends_on = [
     azurerm_network_interface_security_group_association.application
   ]
-}
-
-resource "azurerm_role_assignment" "acr_pull" {
-  scope                = azurerm_container_registry.main.id
-  role_definition_name = "AcrPull"
-  principal_id         = azurerm_linux_virtual_machine.application.identity[0].principal_id
 }

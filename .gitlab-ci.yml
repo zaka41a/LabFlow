@@ -1,0 +1,226 @@
+stages:
+  - test
+  - plan
+  - provision
+  - image
+  - deploy
+  - verify
+  - teardown
+
+default:
+  interruptible: true
+
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH
+
+variables:
+  MAVEN_OPTS: >-
+    -Dmaven.repo.local=$CI_PROJECT_DIR/.m2/repository
+    -Djava.awt.headless=true
+  MAVEN_CLI_OPTS: "--batch-mode --no-transfer-progress"
+  TF_IN_AUTOMATION: "true"
+  TF_INPUT: "false"
+  TF_STATE_NAME: "labflow-dev"
+  TF_VAR_subscription_id: $ARM_SUBSCRIPTION_ID
+  TF_VAR_image_tag: $CI_COMMIT_SHA
+
+backend:test:
+  stage: test
+  image: maven:3.9.11-eclipse-temurin-21-alpine
+  cache:
+    key: maven-$CI_COMMIT_REF_SLUG
+    paths:
+      - .m2/repository
+  script:
+    - cd backend
+    - mvn $MAVEN_CLI_OPTS verify
+  artifacts:
+    when: always
+    reports:
+      junit: backend/target/surefire-reports/TEST-*.xml
+
+frontend:test:
+  stage: test
+  image: node:22.19.0-alpine
+  cache:
+    key:
+      files:
+        - frontend/package-lock.json
+    paths:
+      - .npm/
+  before_script:
+    - cd frontend
+    - npm ci --cache "$CI_PROJECT_DIR/.npm" --prefer-offline --no-audit --no-fund
+  script:
+    - npm run format:check
+    - npm run typecheck
+    - npm test -- --run
+    - npm run build
+  artifacts:
+    paths:
+      - frontend/dist/
+    expire_in: 1 day
+
+tofu:validate:
+  stage: test
+  image:
+    name: ghcr.io/opentofu/opentofu:1.12.5
+    entrypoint: [""]
+  script:
+    - cd infra
+    - tofu fmt -check -recursive
+    - tofu init -backend=false
+    - tofu validate
+
+.tofu_remote_state:
+  image:
+    name: ghcr.io/opentofu/opentofu:1.12.5
+    entrypoint: [""]
+  id_tokens:
+    AZURE_OIDC_TOKEN:
+      aud: api://AzureADTokenExchange
+  variables:
+    ARM_USE_OIDC: "true"
+  before_script:
+    - export ARM_OIDC_TOKEN="$AZURE_OIDC_TOKEN"
+    - cd infra
+    - >-
+      tofu init -reconfigure
+      -backend-config="address=${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/terraform/state/${TF_STATE_NAME}"
+      -backend-config="lock_address=${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/terraform/state/${TF_STATE_NAME}/lock"
+      -backend-config="unlock_address=${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/terraform/state/${TF_STATE_NAME}/lock"
+      -backend-config="username=gitlab-ci-token"
+      -backend-config="password=${CI_JOB_TOKEN}"
+      -backend-config="lock_method=POST"
+      -backend-config="unlock_method=DELETE"
+      -backend-config="retry_wait_min=5"
+
+tofu:plan:
+  extends: .tofu_remote_state
+  stage: plan
+  needs:
+    - backend:test
+    - frontend:test
+    - tofu:validate
+  script:
+    - tofu plan -out=labflow.tfplan
+  artifacts:
+    paths:
+      - infra/labflow.tfplan
+    expire_in: 1 day
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+azure:provision:
+  extends: .tofu_remote_state
+  stage: provision
+  resource_group: labflow-azure-development
+  needs:
+    - job: tofu:plan
+      artifacts: true
+  script:
+    - tofu apply -auto-approve labflow.tfplan
+    - printf 'ACR_NAME=%s\n' "$(tofu output -raw container_registry_name)" > ../deployment.env
+    - printf 'RESOURCE_GROUP=%s\n' "$(tofu output -raw resource_group_name)" >> ../deployment.env
+    - printf 'VM_NAME=%s\n' "$(tofu output -raw virtual_machine_name)" >> ../deployment.env
+    - printf 'APPLICATION_URL=%s\n' "$(tofu output -raw application_url)" >> ../deployment.env
+  artifacts:
+    reports:
+      dotenv: deployment.env
+  environment:
+    name: azure/development
+    url: $APPLICATION_URL
+    on_stop: azure:destroy
+  when: manual
+  allow_failure: false
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+.azure_cli:
+  image: mcr.microsoft.com/azure-cli:2.77.0
+  id_tokens:
+    AZURE_OIDC_TOKEN:
+      aud: api://AzureADTokenExchange
+  before_script:
+    - >-
+      az login --service-principal
+      --username "$ARM_CLIENT_ID"
+      --tenant "$ARM_TENANT_ID"
+      --federated-token "$AZURE_OIDC_TOKEN"
+      --allow-no-subscriptions
+    - az account set --subscription "$ARM_SUBSCRIPTION_ID"
+
+azure:image:
+  extends: .azure_cli
+  stage: image
+  resource_group: labflow-azure-development
+  needs:
+    - job: azure:provision
+      artifacts: true
+  script:
+    - >-
+      az acr build --registry "$ACR_NAME"
+      --image "labflow-backend:${CI_COMMIT_SHA}"
+      --image "labflow-backend:latest"
+      backend
+    - >-
+      az acr build --registry "$ACR_NAME"
+      --image "labflow-frontend:${CI_COMMIT_SHA}"
+      --image "labflow-frontend:latest"
+      frontend
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+azure:deploy:
+  extends: .azure_cli
+  stage: deploy
+  resource_group: labflow-azure-development
+  needs:
+    - job: azure:provision
+      artifacts: true
+    - azure:image
+  script:
+    - >-
+      az vm run-command invoke
+      --resource-group "$RESOURCE_GROUP"
+      --name "$VM_NAME"
+      --command-id RunShellScript
+      --scripts
+      "sed -i -E 's|(labflow-backend:)[^[:space:]]+|\\1${CI_COMMIT_SHA}|' /opt/labflow/compose.yaml"
+      "sed -i -E 's|(labflow-frontend:)[^[:space:]]+|\\1${CI_COMMIT_SHA}|' /opt/labflow/compose.yaml"
+      "/usr/local/sbin/labflow-acr-login"
+      "cd /opt/labflow && docker compose pull && docker compose up --detach --remove-orphans"
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+azure:verify:
+  stage: verify
+  image: curlimages/curl:8.12.1
+  needs:
+    - job: azure:provision
+      artifacts: true
+    - azure:deploy
+  script:
+    - curl --fail --show-error --silent --retry 18 --retry-all-errors --retry-delay 10 "$APPLICATION_URL/healthz"
+    - curl --fail --show-error --silent --retry 6 --retry-all-errors --retry-delay 5 "$APPLICATION_URL/api/auth/config"
+  environment:
+    name: azure/development
+    url: $APPLICATION_URL
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+azure:destroy:
+  extends: .tofu_remote_state
+  stage: teardown
+  resource_group: labflow-azure-development
+  script:
+    - tofu destroy -auto-approve
+  environment:
+    name: azure/development
+    action: stop
+  when: manual
+  allow_failure: true
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH

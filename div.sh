@@ -59,19 +59,22 @@ fi
 
 cd "$project_directory"
 
-info "Baue und starte Frontend, Spring Boot API und Azure Storage Emulator."
+info "Baue und starte Keycloak, Frontend, Spring Boot API und Azure Storage Emulator."
 docker compose --file "$compose_file" up --build --detach --remove-orphans
 
+wait_for_service "OpenID Connect Provider" "http://127.0.0.1:8180/realms/labflow/.well-known/openid-configuration"
 wait_for_service "Azure Storage Emulator" "http://127.0.0.1:10000/" "true"
 wait_for_service "Spring Boot API" "http://127.0.0.1:8080/actuator/health"
-wait_for_service "Weboberfläche" "http://127.0.0.1:5173/healthz"
+wait_for_service "Weboberfläche" "http://127.0.0.1/healthz"
 
 docker compose --file "$compose_file" ps
 
 printf '\n'
 info "LabFlow ist vollständig gestartet."
-printf '  Weboberfläche:  http://localhost:5173\n'
+printf '  Weboberfläche:  http://localhost\n'
+printf '  Alternative URL: http://localhost:5173\n'
 printf '  REST API:       http://localhost:8080/api\n'
+printf '  OpenID Connect: http://keycloak.localhost:8180/realms/labflow\n'
 printf '  Health Check:   http://localhost:8080/actuator/health\n'
 printf '  Azure Blob:     http://localhost:10000/devstoreaccount1\n'
 printf '\nZum Beenden: ./stop.sh\n'

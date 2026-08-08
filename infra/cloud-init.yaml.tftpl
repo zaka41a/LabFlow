@@ -1,0 +1,121 @@
+#cloud-config
+package_update: true
+package_upgrade: true
+ssh_pwauth: false
+
+packages:
+  - ca-certificates
+  - curl
+  - docker.io
+  - docker-compose-v2
+
+write_files:
+  - path: /opt/labflow/compose.yaml
+    owner: root:root
+    permissions: "0640"
+    content: |
+      name: labflow
+
+      services:
+        backend:
+          image: ${registry_server}/labflow-backend:${image_tag}
+          restart: unless-stopped
+          init: true
+          environment:
+            SERVER_PORT: "8080"
+            SPRING_PROFILES_ACTIVE: oidc
+            LABFLOW_FRONTEND_ORIGIN: "http://localhost"
+            LABFLOW_STORAGE_MODE: azure
+            LABFLOW_SESSION_SECURE: "false"
+            AZURE_STORAGE_CONTAINER: labflow
+            AZURE_STORAGE_CONNECTION_STRING: ${jsonencode(storage_connection_string)}
+            LABFLOW_BORROWER_PASSWORD_HASH: ${jsonencode(borrower_password_hash)}
+            LABFLOW_MANAGER_PASSWORD_HASH: ${jsonencode(manager_password_hash)}
+            LABFLOW_TECHNICIAN_PASSWORD_HASH: ${jsonencode(technician_password_hash)}
+            OIDC_CLIENT_ID: ${jsonencode(oidc_client_id)}
+            OIDC_PUBLIC_ISSUER_URI: ${jsonencode(oidc_public_issuer_uri)}
+            OIDC_AUTHORIZATION_URI: ${jsonencode(oidc_authorization_uri)}
+            OIDC_TOKEN_URI: ${jsonencode(oidc_token_uri)}
+            OIDC_JWK_SET_URI: ${jsonencode(oidc_jwk_set_uri)}
+            OIDC_USER_INFO_URI: ${jsonencode(oidc_user_info_uri)}
+            JAVA_TOOL_OPTIONS: "-Djdk.httpclient.allowRestrictedHeaders=content-length"
+          expose:
+            - "8080"
+          healthcheck:
+            test: ["CMD", "wget", "--quiet", "--output-document=-", "http://127.0.0.1:8080/actuator/health"]
+            interval: 15s
+            timeout: 3s
+            retries: 12
+            start_period: 30s
+
+        frontend:
+          image: ${registry_server}/labflow-frontend:${image_tag}
+          restart: unless-stopped
+          init: true
+          ports:
+            - "80:80"
+          depends_on:
+            backend:
+              condition: service_healthy
+          healthcheck:
+            test: ["CMD", "wget", "--quiet", "--output-document=-", "http://127.0.0.1/healthz"]
+            interval: 15s
+            timeout: 3s
+            retries: 12
+            start_period: 10s
+
+  - path: /usr/local/sbin/labflow-acr-login
+    owner: root:root
+    permissions: "0750"
+    content: |
+      #!/usr/bin/env bash
+      set -Eeuo pipefail
+
+      readonly registry_name="${registry_name}"
+      readonly attempts=30
+
+      for ((attempt = 1; attempt <= attempts; attempt++)); do
+        if az login --identity --allow-no-subscriptions >/dev/null 2>&1 && \
+          az acr login --name "$${registry_name}" >/dev/null 2>&1; then
+          exit 0
+        fi
+        sleep 20
+      done
+
+      printf 'Unable to authenticate with Azure Container Registry after %s attempts.\n' "$${attempts}" >&2
+      exit 1
+
+  - path: /etc/systemd/system/labflow.service
+    owner: root:root
+    permissions: "0644"
+    content: |
+      [Unit]
+      Description=LabFlow container stack
+      Wants=network-online.target
+      After=network-online.target docker.service
+      Requires=docker.service
+
+      [Service]
+      Type=oneshot
+      RemainAfterExit=yes
+      WorkingDirectory=/opt/labflow
+      ExecStartPre=/usr/local/sbin/labflow-acr-login
+      ExecStartPre=/usr/bin/docker compose pull
+      ExecStart=/usr/bin/docker compose up --detach --remove-orphans
+      ExecStop=/usr/bin/docker compose down
+      Restart=on-failure
+      RestartSec=30
+      TimeoutStartSec=0
+
+      [Install]
+      WantedBy=multi-user.target
+
+runcmd:
+  - curl -sL https://aka.ms/InstallAzureCLIDeb -o /tmp/install-azure-cli.sh
+  - bash /tmp/install-azure-cli.sh
+  - rm -f /tmp/install-azure-cli.sh
+  - systemctl enable --now docker
+  - systemctl daemon-reload
+  - systemctl enable --now labflow.service
+
+final_message: "LabFlow host provisioning finished after $UPTIME seconds."

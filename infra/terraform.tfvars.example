@@ -1,0 +1,18 @@
+subscription_id     = "00000000-0000-0000-0000-000000000000"
+name_suffix         = "team42"
+admin_source_cidr   = "203.0.113.10/32"
+admin_ssh_public_key = "ssh-ed25519 AAAA... labflow"
+
+# Create BCrypt hashes with cost 12. Never commit plaintext passwords or real hashes.
+borrower_password_hash   = "$2y$12$replace-with-a-real-hash"
+manager_password_hash    = "$2y$12$replace-with-a-real-hash"
+technician_password_hash = "$2y$12$replace-with-a-real-hash"
+
+# Register this public client with the identity provider. Its redirect URI is:
+# http://<application-ip>/login/oauth2/code/labflow
+oidc_client_id         = "labflow-web"
+oidc_public_issuer_uri = "https://identity.example.edu/realms/labflow"
+oidc_authorization_uri = "https://identity.example.edu/realms/labflow/protocol/openid-connect/auth"
+oidc_token_uri         = "https://identity.example.edu/realms/labflow/protocol/openid-connect/token"
+oidc_jwk_set_uri       = "https://identity.example.edu/realms/labflow/protocol/openid-connect/certs"
+oidc_user_info_uri     = "https://identity.example.edu/realms/labflow/protocol/openid-connect/userinfo"

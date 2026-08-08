@@ -1,0 +1,72 @@
+name: Deploy to Azure
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: azure-development
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Publish and deploy
+    runs-on: ubuntu-24.04
+    environment: azure-development
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Sign in to Azure with OpenID Connect
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Build and publish immutable images
+        env:
+          REGISTRY_NAME: ${{ vars.AZURE_CONTAINER_REGISTRY }}
+        run: |
+          set -Eeuo pipefail
+          az acr build \
+            --registry "$REGISTRY_NAME" \
+            --image "labflow-backend:${GITHUB_SHA}" \
+            --image "labflow-backend:latest" \
+            backend
+          az acr build \
+            --registry "$REGISTRY_NAME" \
+            --image "labflow-frontend:${GITHUB_SHA}" \
+            --image "labflow-frontend:latest" \
+            frontend
+
+      - name: Pull the release on the application VM
+        env:
+          RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+          VM_NAME: ${{ vars.AZURE_VM_NAME }}
+        run: |
+          set -Eeuo pipefail
+          remote_script="$(printf '%s\n' \
+            'set -Eeuo pipefail' \
+            "readonly image_tag='${GITHUB_SHA}'" \
+            'sed -i -E "s|(labflow-backend:)[^[:space:]]+|\\1${image_tag}|" /opt/labflow/compose.yaml' \
+            'sed -i -E "s|(labflow-frontend:)[^[:space:]]+|\\1${image_tag}|" /opt/labflow/compose.yaml' \
+            '/usr/local/sbin/labflow-acr-login' \
+            'cd /opt/labflow' \
+            'docker compose pull' \
+            'docker compose up --detach --remove-orphans' \
+            'docker image prune --force')"
+
+          az vm run-command invoke \
+            --resource-group "$RESOURCE_GROUP" \
+            --name "$VM_NAME" \
+            --command-id RunShellScript \
+            --scripts "$remote_script"
+
+      - name: Verify the public health endpoint
+        env:
+          APPLICATION_URL: ${{ vars.AZURE_APPLICATION_URL }}
+        run: curl --fail --show-error --silent --retry 12 --retry-all-errors --retry-delay 10 "$APPLICATION_URL/healthz"

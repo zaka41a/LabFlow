@@ -23,7 +23,6 @@ variables:
   TF_IN_AUTOMATION: "true"
   TF_INPUT: "false"
   TF_STATE_NAME: "labflow-dev"
-  TF_VAR_image_tag: $CI_COMMIT_SHA
   LABFLOW_AZURE_AUTH_MODE: "auto"
   LABFLOW_AZURE_ENABLED: "false"
 

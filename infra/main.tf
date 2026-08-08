@@ -160,7 +160,7 @@ resource "azurerm_linux_virtual_machine" "application" {
 
   custom_data = base64encode(templatefile("${path.module}/cloud-init.yaml.tftpl", {
     registry_server            = azurerm_container_registry.main.login_server
-    image_tag                  = var.image_tag
+    image_tag                  = "latest"
     application_origin         = "http://${azurerm_public_ip.application.fqdn}"
     storage_connection_string  = azurerm_storage_account.main.primary_connection_string
     borrower_password_hash     = replace(var.borrower_password_hash, "$", "$$")

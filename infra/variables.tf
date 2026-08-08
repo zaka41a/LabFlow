@@ -53,12 +53,6 @@ variable "vm_size" {
   default     = "Standard_B2ats_v2"
 }
 
-variable "image_tag" {
-  description = "Container tag pulled by the VM."
-  type        = string
-  default     = "latest"
-}
-
 variable "borrower_password_hash" {
   description = "BCrypt hash for the local Borrower test account."
   type        = string

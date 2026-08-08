@@ -13,6 +13,7 @@ grep --fixed-strings --quiet -- 'default     = "Standard_B2ats_v2"' "$variables_
 grep --fixed-strings --quiet -- 'az acr credential show' "$pipeline_file"
 grep --fixed-strings --quiet -- '--password-stdin' "$pipeline_file"
 grep --fixed-strings --quiet -- 'cloud-init status --wait' "$pipeline_file"
+grep --fixed-strings --quiet -- 'image_tag                  = "latest"' "$infrastructure_file"
 
 if grep --fixed-strings --quiet -- 'resource "azurerm_role_assignment"' "$infrastructure_file"; then
   printf '%s\n' 'The course identity cannot create Azure role assignments.' >&2
@@ -21,6 +22,11 @@ fi
 
 if grep --quiet -- 'registry_\(username\|password\)' "$infrastructure_file" "$cloud_init_file"; then
   printf '%s\n' 'Computed registry credentials must not be embedded in VM custom data.' >&2
+  exit 1
+fi
+
+if grep --quiet -- 'TF_VAR_image_tag\|var\.image_tag' "$pipeline_file" "$infrastructure_file"; then
+  printf '%s\n' 'Image revisions must not replace the virtual machine.' >&2
   exit 1
 fi
 

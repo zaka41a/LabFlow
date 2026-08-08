@@ -204,16 +204,27 @@ azure:deploy:
       artifacts: true
     - azure:image
   script:
-    - >-
-      az vm run-command invoke
-      --resource-group "$RESOURCE_GROUP"
-      --name "$VM_NAME"
-      --command-id RunShellScript
-      --scripts
-      "sed -i -E 's|(labflow-backend:)[^[:space:]]+|\\1${CI_COMMIT_SHA}|' /opt/labflow/compose.yaml"
-      "sed -i -E 's|(labflow-frontend:)[^[:space:]]+|\\1${CI_COMMIT_SHA}|' /opt/labflow/compose.yaml"
-      "/usr/local/sbin/labflow-acr-login"
-      "cd /opt/labflow && docker compose pull && docker compose up --detach --remove-orphans"
+    - |
+      set -Eeuo pipefail
+
+      registry_server="$(az acr show --name "$ACR_NAME" --query loginServer --output tsv)"
+      registry_username="$(az acr credential show --name "$ACR_NAME" --query username --output tsv)"
+      registry_password="$(az acr credential show --name "$ACR_NAME" --query 'passwords[0].value' --output tsv)"
+      registry_password_base64="$(printf '%s' "$registry_password" | base64 | tr -d '\n')"
+
+      az vm run-command invoke \
+        --resource-group "$RESOURCE_GROUP" \
+        --name "$VM_NAME" \
+        --command-id RunShellScript \
+        --scripts \
+        "cloud-init status --wait" \
+        "install -d -m 0700 /root/.docker" \
+        "printf '%s' '${registry_password_base64}' | base64 --decode | docker --config /root/.docker login '${registry_server}' --username '${registry_username}' --password-stdin" \
+        "sed -i -E 's|(labflow-backend:)[^[:space:]]+|\\1${CI_COMMIT_SHA}|' /opt/labflow/compose.yaml" \
+        "sed -i -E 's|(labflow-frontend:)[^[:space:]]+|\\1${CI_COMMIT_SHA}|' /opt/labflow/compose.yaml" \
+        "systemctl restart labflow.service" \
+        --query 'value[0].message' \
+        --output tsv
   rules:
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $LABFLOW_AZURE_ENABLED == "true"'
 

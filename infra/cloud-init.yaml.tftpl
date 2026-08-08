@@ -71,31 +71,6 @@ write_files:
             retries: 12
             start_period: 10s
 
-  - path: /usr/local/sbin/labflow-acr-login
-    owner: root:root
-    permissions: "0750"
-    content: |
-      #!/usr/bin/env bash
-      set -Eeuo pipefail
-
-      readonly registry_server="${registry_server}"
-      readonly registry_username="${registry_username}"
-      readonly registry_password=${jsonencode(registry_password)}
-      readonly attempts=30
-
-      for ((attempt = 1; attempt <= attempts; attempt++)); do
-        if printf '%s' "$${registry_password}" | \
-          docker login "$${registry_server}" \
-            --username "$${registry_username}" \
-            --password-stdin >/dev/null 2>&1; then
-          exit 0
-        fi
-        sleep 10
-      done
-
-      printf 'Unable to authenticate with Azure Container Registry after %s attempts.\n' "$${attempts}" >&2
-      exit 1
-
   - path: /etc/systemd/system/labflow.service
     owner: root:root
     permissions: "0644"
@@ -110,7 +85,7 @@ write_files:
       Type=oneshot
       RemainAfterExit=yes
       WorkingDirectory=/opt/labflow
-      ExecStartPre=/usr/local/sbin/labflow-acr-login
+      Environment=DOCKER_CONFIG=/root/.docker
       ExecStartPre=/usr/bin/docker compose pull
       ExecStart=/usr/bin/docker compose up --detach --remove-orphans
       ExecStop=/usr/bin/docker compose down
@@ -124,6 +99,6 @@ write_files:
 runcmd:
   - systemctl enable --now docker
   - systemctl daemon-reload
-  - systemctl enable --now labflow.service
+  - systemctl enable labflow.service
 
 final_message: "LabFlow host provisioning finished after $UPTIME seconds."

@@ -160,8 +160,6 @@ resource "azurerm_linux_virtual_machine" "application" {
 
   custom_data = base64encode(templatefile("${path.module}/cloud-init.yaml.tftpl", {
     registry_server            = azurerm_container_registry.main.login_server
-    registry_username          = azurerm_container_registry.main.admin_username
-    registry_password          = azurerm_container_registry.main.admin_password
     image_tag                  = var.image_tag
     application_origin         = "http://${azurerm_public_ip.application.fqdn}"
     storage_connection_string  = azurerm_storage_account.main.primary_connection_string

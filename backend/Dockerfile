@@ -1,16 +1,10 @@
-# syntax=docker/dockerfile:1.7
-
 FROM maven:3.9.11-eclipse-temurin-21-alpine AS build
 
 WORKDIR /workspace
 
 COPY pom.xml .
-RUN --mount=type=cache,target=/root/.m2 \
-    mvn --batch-mode --no-transfer-progress dependency:go-offline
-
 COPY src ./src
-RUN --mount=type=cache,target=/root/.m2 \
-    mvn --batch-mode --no-transfer-progress -Dmaven.test.skip=true package && \
+RUN mvn --batch-mode --no-transfer-progress -Dmaven.test.skip=true package && \
     cp target/labflow-backend-*.jar application.jar
 
 FROM eclipse-temurin:21-jre-alpine

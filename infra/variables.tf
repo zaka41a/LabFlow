@@ -50,7 +50,7 @@ variable "admin_source_cidr" {
 variable "vm_size" {
   description = "Azure VM size used for the Docker host."
   type        = string
-  default     = "Standard_B2s"
+  default     = "Standard_B2ats_v2"
 }
 
 variable "image_tag" {

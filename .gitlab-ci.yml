@@ -88,20 +88,20 @@ tofu:validate:
   id_tokens:
     AZURE_OIDC_TOKEN:
       aud: api://AzureADTokenExchange
+  variables:
+    TF_HTTP_ADDRESS: "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/terraform/state/${TF_STATE_NAME}"
+    TF_HTTP_LOCK_ADDRESS: "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/terraform/state/${TF_STATE_NAME}/lock"
+    TF_HTTP_UNLOCK_ADDRESS: "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/terraform/state/${TF_STATE_NAME}/lock"
+    TF_HTTP_USERNAME: "gitlab-ci-token"
+    TF_HTTP_PASSWORD: "$CI_JOB_TOKEN"
+    TF_HTTP_LOCK_METHOD: "POST"
+    TF_HTTP_UNLOCK_METHOD: "DELETE"
+    TF_HTTP_RETRY_WAIT_MIN: "5"
   before_script:
     - source ci/azure-auth.sh
     - labflow_configure_azure_auth
     - cd infra
-    - >-
-      tofu init -reconfigure
-      -backend-config="address=${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/terraform/state/${TF_STATE_NAME}"
-      -backend-config="lock_address=${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/terraform/state/${TF_STATE_NAME}/lock"
-      -backend-config="unlock_address=${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/terraform/state/${TF_STATE_NAME}/lock"
-      -backend-config="username=gitlab-ci-token"
-      -backend-config="password=${CI_JOB_TOKEN}"
-      -backend-config="lock_method=POST"
-      -backend-config="unlock_method=DELETE"
-      -backend-config="retry_wait_min=5"
+    - tofu init -reconfigure
 
 azure:preflight:
   stage: plan

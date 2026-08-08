@@ -182,6 +182,10 @@ resource "azurerm_linux_virtual_machine" "application" {
 
   tags = azurerm_resource_group.main.tags
 
+  lifecycle {
+    ignore_changes = [custom_data]
+  }
+
   depends_on = [
     azurerm_network_interface_security_group_association.application
   ]

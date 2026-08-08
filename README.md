@@ -2,7 +2,6 @@
   <h1>LabFlow</h1>
   <p><strong>Rollenbasierte Verwaltung und Ausleihe von Laborgeräten.</strong></p>
   <p>
-    <a href="https://git-ce.rwth-aachen.de/lsit-2026/projects/labflow/-/pipelines"><img src="https://git-ce.rwth-aachen.de/lsit-2026/projects/labflow/badges/main/pipeline.svg" alt="GitLab Pipeline Status" /></a>
     <img src="https://img.shields.io/badge/Java-21-007396.svg" alt="Java 21" />
     <img src="https://img.shields.io/badge/Spring%20Boot-4.1-6DB33F.svg" alt="Spring Boot 4.1" />
     <img src="https://img.shields.io/badge/React-19-149ECA.svg" alt="React 19" />

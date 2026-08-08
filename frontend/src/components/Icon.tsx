@@ -18,25 +18,51 @@ export type IconName =
   | 'location'
   | 'check'
   | 'chevron'
+  | 'mail'
+  | 'lock'
+  | 'eye'
+  | 'eyeOff'
+  | 'shield'
+  | 'logout'
+  | 'bell'
 
-const paths: Record<IconName, string> = {
-  dashboard: 'M4 13h6V4H4v9Zm0 7h6v-5H4v5Zm10 0h6v-9h-6v9Zm0-16v5h6V4h-6Z',
-  equipment: 'M6 3h12a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Zm1 4v4h10V7H7Zm0 7v3h4v-3H7Zm7 0v3h3v-3h-3Z',
-  requests: 'M7 3h10a2 2 0 0 1 2 2v16l-7-3-7 3V5a2 2 0 0 1 2-2Zm2 5v2h6V8H9Zm0 4v2h6v-2H9Z',
-  approvals: 'm9.55 16.6-4.2-4.2 1.4-1.4 2.8 2.8 7.7-7.7 1.4 1.4-9.1 9.1Z',
-  handover: 'M4 7h11l-2.5-2.5L14 3l5 5-5 5-1.5-1.5L15 9H4V7Zm16 10H9l2.5 2.5L10 21l-5-5 5-5 1.5 1.5L9 15h11v2Z',
-  menu: 'M4 6h16v2H4V6Zm0 5h16v2H4v-2Zm0 5h16v2H4v-2Z',
-  close: 'm6.4 5 5.6 5.6L17.6 5 19 6.4 13.4 12l5.6 5.6-1.4 1.4-5.6-5.6L6.4 19 5 17.6l5.6-5.6L5 6.4 6.4 5Z',
-  search: 'M10.5 4a6.5 6.5 0 1 1 0 13 6.5 6.5 0 0 1 0-13Zm0 2a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9Zm5.8 9.9L21 20.6 19.6 22l-4.7-4.7 1.4-1.4Z',
-  arrow: 'm9 5 7 7-7 7-1.4-1.4 5.6-5.6-5.6-5.6L9 5Z',
-  refresh: 'M12 4a8 8 0 0 1 7.4 5H22l-4 4-4-4h3.2A6 6 0 1 0 18 15h2.1A8 8 0 1 1 12 4Z',
-  plus: 'M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6V5Z',
-  calendar: 'M7 2h2v2h6V2h2v2h2a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2V2Zm12 8H5v9h14v-9ZM5 8h14V6h-2v1h-2V6H9v1H7V6H5v2Z',
-  clock: 'M12 2a10 10 0 1 1 0 20 10 10 0 0 1 0-20Zm0 2a8 8 0 1 0 0 16 8 8 0 0 0 0-16Zm1 3v4.6l3.2 1.9-1 1.7-4.2-2.5V7h2Z',
-  user: 'M12 2a5 5 0 1 1 0 10 5 5 0 0 1 0-10Zm0 2a3 3 0 1 0 0 6 3 3 0 0 0 0-6Zm0 10c4.4 0 8 2.2 8 5v2H4v-2c0-2.8 3.6-5 8-5Zm0 2c-3.6 0-6 1.7-6 3h12c0-1.3-2.4-3-6-3Z',
-  location: 'M12 2a7 7 0 0 1 7 7c0 5.2-7 13-7 13S5 14.2 5 9a7 7 0 0 1 7-7Zm0 2a5 5 0 0 0-5 5c0 3.2 3.2 7.9 5 10.3 1.8-2.4 5-7.1 5-10.3a5 5 0 0 0-5-5Zm0 2.5A2.5 2.5 0 1 1 12 11a2.5 2.5 0 0 1 0-5Z',
-  check: 'm9.4 17.2-5-5L6 10.6l3.4 3.4L18 5.4 19.6 7 9.4 17.2Z',
-  chevron: 'm7.4 8.6 4.6 4.6 4.6-4.6L18 10l-6 6-6-6 1.4-1.4Z',
+const paths: Record<IconName, string[]> = {
+  dashboard: ['M4 4h6v6H4z', 'M14 4h6v6h-6z', 'M4 14h6v6H4z', 'M14 14h6v6h-6z'],
+  equipment: ['M4 5h16v11H4z', 'M8 20h8', 'M12 16v4'],
+  requests: ['M6 3h9l3 3v15H6z', 'M14 3v4h4', 'M9 12h6', 'M9 16h6'],
+  approvals: ['M9 5h6', 'M9 3h6v4H9z', 'M7 5H5v16h14V5h-2', 'm9 14 2 2 4-5'],
+  handover: ['M4 8h13', 'm14 5 3 3-3 3', 'M20 16H7', 'm10 13-3 3 3 3'],
+  menu: ['M4 6h16', 'M4 12h16', 'M4 18h16'],
+  close: ['m6 6 12 12', 'M18 6 6 18'],
+  search: ['M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z', 'm21 21-4.35-4.35'],
+  arrow: ['M5 12h14', 'm14 7 5 5-5 5'],
+  refresh: [
+    'M20 7v5h-5',
+    'M4 17v-5h5',
+    'M6.1 9a7 7 0 0 1 11.7-2.6L20 9',
+    'M4 15l2.2 2.6A7 7 0 0 0 17.9 15',
+  ],
+  plus: ['M12 5v14', 'M5 12h14'],
+  calendar: ['M6 3v3', 'M18 3v3', 'M4 8h16', 'M5 5h14a1 1 0 0 1 1 1v14H4V6a1 1 0 0 1 1-1Z'],
+  clock: ['M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z', 'M12 7v5l3 2'],
+  user: ['M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z', 'M4 21a8 8 0 0 1 16 0'],
+  location: [
+    'M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z',
+    'M12 13a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z',
+  ],
+  check: ['m5 12 4 4L19 6'],
+  chevron: ['m7 10 5 5 5-5'],
+  mail: ['M3 5h18v14H3z', 'm3 7 9 6 9-6'],
+  lock: ['M5 10h14v11H5z', 'M8 10V7a4 4 0 0 1 8 0v3', 'M12 14v3'],
+  eye: ['M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z', 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z'],
+  eyeOff: [
+    'm3 3 18 18',
+    'M10.6 5.2A9.7 9.7 0 0 1 12 5c6 0 10 7 10 7a15 15 0 0 1-2.1 3',
+    'M6.2 6.2C3.6 8.2 2 12 2 12s4 7 10 7a9.7 9.7 0 0 0 3.8-.8',
+  ],
+  shield: ['M12 3 20 6v5c0 5-3.4 8.5-8 10-4.6-1.5-8-5-8-10V6z', 'm8.5 12 2.2 2.2 4.8-5'],
+  logout: ['M10 4H5v16h5', 'M14 8l4 4-4 4', 'M18 12H9'],
+  bell: ['M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9', 'M10 21h4'],
 }
 
 interface IconProps extends SVGProps<SVGSVGElement> {
@@ -45,8 +71,19 @@ interface IconProps extends SVGProps<SVGSVGElement> {
 
 export function Icon({ name, ...props }: IconProps) {
   return (
-    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" {...props}>
-      <path d={paths[name]} />
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      {...props}
+    >
+      {paths[name].map((path) => (
+        <path key={path} d={path} />
+      ))}
     </svg>
   )
 }

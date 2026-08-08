@@ -1,9 +1,19 @@
-import type { DemoRole, EquipmentStatus, EquipmentType, LoanStatus } from './types'
+import type {
+  EquipmentAccessPolicy,
+  EquipmentStatus,
+  EquipmentType,
+  LoanStatus,
+  UserRole,
+} from './types'
 
-export const roleLabels: Record<DemoRole, string> = {
+export const roleLabels: Record<UserRole, string> = {
   BORROWER: 'Borrower',
   LAB_MANAGER: 'Lab Manager',
   TECHNICIAN: 'Technician',
+}
+
+export function labLabel(labId: string) {
+  return labId === 'FH_AACHEN' ? 'Labor FH Aachen' : labId
 }
 
 export const statusLabels: Record<EquipmentStatus, string> = {
@@ -19,7 +29,16 @@ export const typeLabels: Record<EquipmentType, string> = {
   CAMERA: 'Kamera',
   MICROCONTROLLER: 'Mikrocontroller',
   MEASURING_DEVICE: 'Messgerät',
+  POWER_TOOL: 'Elektrowerkzeug',
+  SOLDERING_EQUIPMENT: 'Löttechnik',
+  LABORATORY_DEVICE: 'Laborgerät',
   OTHER: 'Sonstiges',
+}
+
+export const accessPolicyLabels: Record<EquipmentAccessPolicy, string> = {
+  OPEN: 'Standardzugang',
+  INSTRUCTION_REQUIRED: 'Unterweisung erforderlich',
+  QUALIFICATION_REQUIRED: 'Qualifikation erforderlich',
 }
 
 export const loanStatusLabels: Record<LoanStatus, string> = {

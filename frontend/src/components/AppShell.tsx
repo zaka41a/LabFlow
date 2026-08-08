@@ -1,77 +1,95 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
+import { roleLabels } from '../lib/labels'
+import type { AppPath } from '../lib/navigation'
+import type { AuthenticatedUser, UserRole } from '../lib/types'
 import { AppLink } from './AppLink'
 import { Icon, type IconName } from './Icon'
-import { roleLabels } from '../lib/labels'
-import type { DemoRole } from '../lib/types'
-import type { AppPath } from '../lib/navigation'
 
 interface NavigationItem {
   label: string
   href: AppPath
   icon: IconName
-  roles?: DemoRole[]
+  roles?: UserRole[]
 }
 
 interface AppShellProps {
   activePath: AppPath
-  role: DemoRole
-  onRoleChange: (role: DemoRole) => void
+  user: AuthenticatedUser
+  loggingOut: boolean
+  onLogout: () => void
   onNavigate: (path: AppPath) => void
   children: ReactNode
 }
 
 const navigation: NavigationItem[] = [
   { label: 'Übersicht', href: '/', icon: 'dashboard' },
-  { label: 'Geräte', href: '/equipment', icon: 'equipment' },
+  { label: 'Gerätebestand', href: '/equipment', icon: 'equipment' },
   { label: 'Meine Anträge', href: '/requests', icon: 'requests', roles: ['BORROWER'] },
   { label: 'Freigaben', href: '/approvals', icon: 'approvals', roles: ['LAB_MANAGER'] },
-  { label: 'Übergaben', href: '/handover', icon: 'handover', roles: ['TECHNICIAN'] },
+  { label: 'Ausgabe und Rückgabe', href: '/handover', icon: 'handover', roles: ['TECHNICIAN'] },
 ]
 
 export function AppShell({
   activePath,
-  role,
-  onRoleChange,
+  user,
+  loggingOut,
+  onLogout,
   onNavigate,
   children,
 }: AppShellProps) {
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const primaryRole = user.roles[0] ?? 'BORROWER'
+  const activeItem = navigation.find((item) => item.href === activePath) ?? navigation[0]
   const visibleNavigation = navigation.filter(
-    (item) => !item.roles || item.roles.includes(role),
+    (item) => !item.roles || item.roles.some((role) => user.roles.includes(role)),
   )
 
+  useEffect(() => {
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setMobileOpen(false)
+        setUserMenuOpen(false)
+      }
+    }
+    window.addEventListener('keydown', closeOnEscape)
+    return () => window.removeEventListener('keydown', closeOnEscape)
+  }, [])
+
+  const navigateAndClose = (path: AppPath) => {
+    onNavigate(path)
+    setMobileOpen(false)
+    setUserMenuOpen(false)
+  }
+
   return (
-    <div className="min-h-screen w-full max-w-full overflow-x-clip lg:grid lg:grid-cols-[17rem_1fr]">
+    <div className="min-h-screen bg-slate-100 lg:grid lg:grid-cols-[16rem_minmax(0,1fr)]">
       {mobileOpen && (
         <button
-          className="fixed inset-0 z-30 bg-ink-950/35 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 z-30 bg-slate-950/50 lg:hidden"
           aria-label="Navigation schließen"
           onClick={() => setMobileOpen(false)}
         />
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-40 flex w-68 flex-col bg-ink-950 px-5 py-6 text-white shadow-2xl transition-transform lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-40 flex w-64 flex-col bg-brand-700 text-white transition-transform lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 ${
           mobileOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div className="flex items-center justify-between">
-          <AppLink
-            to="/"
-            onNavigate={onNavigate}
-            onNavigated={() => setMobileOpen(false)}
-            className="flex items-center gap-3"
-          >
-            <span className="grid size-11 place-items-center rounded-2xl bg-brand-500 font-black tracking-tight text-white shadow-lg shadow-brand-500/25">
-              LF
-            </span>
-            <span>
-              <span className="block text-lg font-bold tracking-tight">LabFlow</span>
-              <span className="block text-xs text-slate-400">FH Aachen</span>
-            </span>
-          </AppLink>
+        <div className="flex items-start justify-between border-b border-slate-200 bg-white px-5 py-4 text-ink-950">
+          <div>
+            <img
+              src="/branding/fh-aachen-logo.webp"
+              alt="FH Aachen"
+              width="320"
+              height="94"
+              className="h-auto w-40"
+            />
+            <p className="mt-2 text-xs font-medium text-slate-500">Geräteverwaltung</p>
+          </div>
           <button
-            className="rounded-lg p-2 text-slate-300 hover:bg-white/10 lg:hidden"
+            className="rounded-md p-2 text-slate-500 hover:bg-slate-100 hover:text-ink-950 lg:hidden"
             onClick={() => setMobileOpen(false)}
             aria-label="Navigation schließen"
           >
@@ -79,90 +97,126 @@ export function AppShell({
           </button>
         </div>
 
-        <nav className="mt-10 space-y-1" aria-label="Hauptnavigation">
-          {visibleNavigation.map((item) => (
-            <AppLink
-              key={item.href}
-              to={item.href}
-              onNavigate={onNavigate}
-              onNavigated={() => setMobileOpen(false)}
-              aria-current={activePath === item.href ? 'page' : undefined}
-              className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
-                activePath === item.href
-                  ? 'bg-brand-500 text-white shadow-lg shadow-brand-950/25'
-                  : 'text-slate-300 hover:bg-white/8 hover:text-white'
-              }`}
-            >
-              <Icon name={item.icon} className="size-5" />
-              {item.label}
-            </AppLink>
-          ))}
+        <nav className="flex-1 px-3 py-5" aria-label="Hauptnavigation">
+          <p className="px-3 pb-2 text-xs font-medium uppercase tracking-wider text-brand-200">
+            Navigation
+          </p>
+          <div className="space-y-1">
+            {visibleNavigation.map((item) => {
+              const active = activePath === item.href
+              return (
+                <AppLink
+                  key={item.href}
+                  to={item.href}
+                  onNavigate={navigateAndClose}
+                  aria-current={active ? 'page' : undefined}
+                  className={`flex min-h-11 items-center gap-3 rounded-md border-l-2 px-3 py-2.5 text-sm font-medium ${
+                    active
+                      ? 'border-white bg-white/15 text-white'
+                      : 'border-transparent text-brand-100 hover:bg-white/10 hover:text-white'
+                  }`}
+                >
+                  <Icon name={item.icon} className="size-5 shrink-0" />
+                  <span>{item.label}</span>
+                </AppLink>
+              )
+            })}
+          </div>
         </nav>
 
-        <div className="mt-auto rounded-2xl border border-white/10 bg-white/5 p-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand-300">
-            Systemstatus
-          </p>
-          <div className="mt-3 flex items-center gap-2 text-sm text-slate-200">
-            <span className="size-2 rounded-full bg-emerald-400 shadow-[0_0_0_4px_rgb(52_211_153_/_0.12)]" />
-            Entwicklungsumgebung
+        <div className="border-t border-white/20 px-5 py-4 text-xs leading-5 text-brand-100">
+          <div className="flex items-center gap-2">
+            <span className="size-2 rounded-full bg-emerald-400" />
+            <span>System verfügbar</span>
           </div>
+          <p className="mt-2">
+            Abmeldung nach {Math.round(user.sessionTimeoutSeconds / 60)} Minuten Inaktivität.
+          </p>
         </div>
       </aside>
 
-      <div className="min-w-0 overflow-x-clip">
-        <header className="sticky top-0 z-20 border-b border-slate-200/80 bg-white/85 px-4 py-3 backdrop-blur-xl sm:px-6 lg:px-8">
-          <div className="mx-auto flex min-w-0 max-w-7xl items-center justify-between gap-3 sm:gap-4">
-            <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+      <div className="min-w-0">
+        <header className="sticky top-0 z-20 border-b border-brand-800 bg-brand-700 px-4 sm:px-6 lg:px-8">
+          <div className="mx-auto flex h-16 max-w-[86rem] items-center justify-between gap-4">
+            <div className="flex min-w-0 items-center gap-3">
               <button
-                className="rounded-xl border border-slate-200 bg-white p-2.5 text-ink-950 shadow-sm lg:hidden"
+                className="grid size-10 shrink-0 place-items-center rounded-md border border-white/30 text-white hover:bg-white/10 lg:hidden"
                 onClick={() => setMobileOpen(true)}
                 aria-label="Navigation öffnen"
               >
                 <Icon name="menu" className="size-5" />
               </button>
-              <div className="hidden sm:block">
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Labor</p>
-                <p className="text-sm font-semibold text-ink-950">LAB_A · Campus Jülich</p>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-white">{activeItem.label}</p>
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
-              <label className="hidden text-xs font-semibold text-slate-500 sm:block" htmlFor="demo-role">
-                Demo Rolle
-              </label>
-              <select
-                id="demo-role"
-                value={role}
-                onChange={(event) => {
-                  const nextRole = event.target.value as DemoRole
-                  onRoleChange(nextRole)
-                  const activeItem = navigation.find((item) => item.href === activePath)
-                  if (activeItem?.roles && !activeItem.roles.includes(nextRole)) {
-                    onNavigate('/')
-                  }
-                }}
-                className="min-w-0 max-w-36 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-ink-950 shadow-sm sm:max-w-none"
+            <div className="relative">
+              <button
+                type="button"
+                aria-expanded={userMenuOpen}
+                aria-haspopup="menu"
+                onClick={() => setUserMenuOpen((current) => !current)}
+                className="flex min-w-0 items-center gap-3 rounded-md px-2 py-1.5 text-left hover:bg-white/10"
               >
-                {Object.entries(roleLabels).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-              <div className="hidden size-10 place-items-center rounded-xl bg-brand-100 text-sm font-bold text-brand-800 sm:grid">
-                ZS
-              </div>
+                <span className="grid size-9 shrink-0 place-items-center rounded-md bg-white text-xs font-semibold text-brand-800">
+                  {initials(user.displayName)}
+                </span>
+                <span className="hidden min-w-0 sm:block">
+                  <span className="block max-w-40 truncate text-sm font-semibold text-white">
+                    {user.displayName}
+                  </span>
+                  <span className="block text-xs text-brand-100">{roleLabels[primaryRole]}</span>
+                </span>
+                <Icon
+                  name="chevron"
+                  className={`hidden size-4 text-brand-100 sm:block ${userMenuOpen ? 'rotate-180' : ''}`}
+                />
+              </button>
+
+              {userMenuOpen && (
+                <div
+                  role="menu"
+                  className="absolute right-0 top-[calc(100%+0.5rem)] w-[min(19rem,calc(100vw-2rem))] rounded-lg border border-slate-200 bg-white shadow-md"
+                >
+                  <div className="border-b border-slate-200 px-4 py-3">
+                    <p className="truncate text-sm font-semibold text-ink-950">
+                      {user.displayName}
+                    </p>
+                    <p className="mt-0.5 truncate text-xs text-slate-500">{user.username}</p>
+                    <p className="mt-2 text-xs font-medium text-brand-700">
+                      {roleLabels[primaryRole]}
+                    </p>
+                  </div>
+                  <button
+                    role="menuitem"
+                    type="button"
+                    disabled={loggingOut}
+                    onClick={onLogout}
+                    className="flex w-full items-center gap-3 rounded-b-lg px-4 py-3 text-sm font-medium text-rose-700 hover:bg-rose-50 disabled:cursor-wait disabled:opacity-60"
+                  >
+                    <Icon name="logout" className="size-5" />
+                    {loggingOut ? 'Abmeldung läuft…' : 'Abmelden'}
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </header>
 
-        <main className="px-4 py-7 sm:px-6 lg:px-8 lg:py-9">
-          <div className="mx-auto max-w-7xl">
-            {children}
-          </div>
+        <main className="px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+          <div className="mx-auto max-w-[86rem]">{children}</div>
         </main>
       </div>
     </div>
   )
+}
+
+function initials(name: string) {
+  return name
+    .split(' ')
+    .map((part) => part[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase()
 }

@@ -7,13 +7,7 @@ interface AppLinkProps extends Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'hr
   onNavigated?: () => void
 }
 
-export function AppLink({
-  to,
-  onNavigate,
-  onNavigated,
-  onClick,
-  ...props
-}: AppLinkProps) {
+export function AppLink({ to, onNavigate, onNavigated, onClick, ...props }: AppLinkProps) {
   const handleClick = (event: MouseEvent<HTMLAnchorElement>) => {
     onClick?.(event)
     if (event.defaultPrevented || !isPlainLeftClick(event)) {

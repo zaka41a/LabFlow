@@ -1,27 +1,30 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 @theme {
-  --color-brand-50: #eff6ff;
-  --color-brand-100: #dbeafe;
-  --color-brand-200: #bfdbfe;
-  --color-brand-300: #93c5fd;
-  --color-brand-400: #60a5fa;
-  --color-brand-500: #3b82f6;
-  --color-brand-600: #2563eb;
-  --color-brand-700: #1d4ed8;
-  --color-brand-800: #1e40af;
-  --color-brand-900: #1e3a8a;
-  --color-brand-950: #172554;
-  --color-ink-950: #0b1f35;
-  --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --color-brand-50: #f1f7fc;
+  --color-brand-100: #dcecf8;
+  --color-brand-200: #b9d8ef;
+  --color-brand-300: #85b9df;
+  --color-brand-400: #4f96ca;
+  --color-brand-500: #2675b6;
+  --color-brand-600: #0d5f9f;
+  --color-brand-700: #084f87;
+  --color-brand-800: #0b436f;
+  --color-brand-900: #0d395d;
+  --color-brand-950: #08253d;
+  --color-ink-950: #162638;
+  --font-sans:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 :root {
-  color: #0b1f35;
-  background: #f5f8fc;
+  color: #162638;
+  background: #f1f3f5;
   font-family: var(--font-sans);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 * {
@@ -32,10 +35,7 @@ body {
   min-width: 320px;
   min-height: 100vh;
   margin: 0;
-  background:
-    radial-gradient(circle at 96% 0%, rgb(37 99 235 / 0.11), transparent 30rem),
-    radial-gradient(circle at 15% 100%, rgb(16 185 129 / 0.07), transparent 26rem),
-    #f5f8fc;
+  background: #f1f3f5;
 }
 
 button,
@@ -50,7 +50,7 @@ a,
 input,
 textarea,
 select {
-  outline-color: #2563eb;
+  outline-color: #0d5f9f;
   outline-offset: 3px;
 }
 
@@ -58,7 +58,45 @@ button {
   cursor: pointer;
 }
 
+button:disabled {
+  cursor: not-allowed;
+}
+
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #eef2f7;
+}
+
+::-webkit-scrollbar-thumb {
+  border: 2px solid #eef2f7;
+  border-radius: 999px;
+  background: #b6c2d1;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #8d9bad;
+}
+
 ::selection {
-  color: #0b1f35;
-  background: #bfdbfe;
+  color: #162638;
+  background: #b9d8ef;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

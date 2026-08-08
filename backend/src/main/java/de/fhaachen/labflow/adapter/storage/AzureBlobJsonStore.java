@@ -128,7 +128,7 @@ public class AzureBlobJsonStore {
             BlobParallelUploadOptions options = new BlobParallelUploadOptions(
                     BinaryData.fromBytes(document)
             ).setRequestConditions(conditions);
-            container.getBlobClient(blobName).uploadWithResponse(options, Context.NONE);
+            container.getBlobClient(blobName).uploadWithResponse(options, null, Context.NONE);
         } catch (BlobStorageException exception) {
             if (exception.getStatusCode() == 409 || exception.getStatusCode() == 412) {
                 throw new ConcurrencyConflictException(

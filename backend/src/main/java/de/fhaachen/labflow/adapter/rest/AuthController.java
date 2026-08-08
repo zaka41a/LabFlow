@@ -30,7 +30,11 @@ public class AuthController {
 
     @GetMapping("/csrf")
     public CsrfTokenResponse csrf(CsrfToken csrfToken) {
-        return new CsrfTokenResponse(csrfToken.getHeaderName(), csrfToken.getToken());
+        return new CsrfTokenResponse(
+                csrfToken.getHeaderName(),
+                csrfToken.getParameterName(),
+                csrfToken.getToken()
+        );
     }
 
     @GetMapping("/me")
@@ -55,7 +59,7 @@ public class AuthController {
         );
     }
 
-    public record CsrfTokenResponse(String headerName, String token) {
+    public record CsrfTokenResponse(String headerName, String parameterName, String token) {
     }
 
     public record AuthenticationConfigResponse(

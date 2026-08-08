@@ -52,14 +52,6 @@ export default function App() {
 
   const logoutMutation = useMutation({
     mutationFn: logout,
-    onSettled: () => {
-      queryClient.removeQueries({
-        predicate: (query) => query.queryKey[0] !== 'session',
-      })
-      queryClient.setQueryData(['session'], null)
-      window.history.replaceState({}, '', '/')
-      setPath('/')
-    },
   })
 
   useEffect(() => {
@@ -114,9 +106,7 @@ export default function App() {
       onNavigate={navigate}
     >
       {path === '/' && <DashboardPage onNavigate={navigate} user={user} />}
-      {path === '/equipment' && (
-        <EquipmentPage onNavigate={navigate} labId={user.labId} labName={user.labName} />
-      )}
+      {path === '/equipment' && <EquipmentPage onNavigate={navigate} user={user} />}
       {path === '/requests' && <RequestsPage user={user} />}
       {path === '/approvals' && <ApprovalsPage labName={user.labName} />}
       {path === '/handover' && <HandoverPage labName={user.labName} />}

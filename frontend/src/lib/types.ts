@@ -25,6 +25,15 @@ export interface Equipment {
   imageUrl: string
 }
 
+export interface CreateEquipment {
+  name: string
+  type: EquipmentType
+  serialNumber: string
+  accessPolicy: EquipmentAccessPolicy
+  requiredQualification?: string
+  image: File
+}
+
 export interface DashboardSummary {
   total: number
   available: number

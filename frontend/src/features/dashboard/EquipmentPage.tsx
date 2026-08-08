@@ -1,28 +1,45 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AppLink } from '../../components/AppLink'
 import { AccessPolicyBadge } from '../../components/AccessPolicyBadge'
 import { EquipmentTable } from '../../components/EquipmentTable'
 import { Icon } from '../../components/Icon'
 import { PageHeader } from '../../components/PageHeader'
 import { StatusBadge } from '../../components/StatusBadge'
-import { getEquipment } from '../../lib/api'
+import { ApiError, createEquipment, getEquipment } from '../../lib/api'
 import { typeLabels } from '../../lib/labels'
 import type { AppPath } from '../../lib/navigation'
-import type { Equipment } from '../../lib/types'
+import type { AuthenticatedUser, CreateEquipment, Equipment } from '../../lib/types'
+import { CreateEquipmentForm } from './CreateEquipmentForm'
 
 interface EquipmentPageProps {
   onNavigate: (path: AppPath) => void
-  labId: string
-  labName: string
+  user: AuthenticatedUser
 }
 
-export function EquipmentPage({ onNavigate, labId, labName }: EquipmentPageProps) {
+export function EquipmentPage({ onNavigate, user }: EquipmentPageProps) {
+  const queryClient = useQueryClient()
   const [query, setQuery] = useState('')
   const [selectedEquipment, setSelectedEquipment] = useState<Equipment | null>(null)
+  const [showCreateForm, setShowCreateForm] = useState(false)
+  const [notice, setNotice] = useState<string | null>(null)
+  const isBorrower = user.roles.includes('BORROWER')
+  const isTechnician = user.roles.includes('TECHNICIAN')
   const equipment = useQuery({
-    queryKey: ['equipment', labId],
+    queryKey: ['equipment', user.labId],
     queryFn: getEquipment,
+  })
+  const creation = useMutation({
+    mutationFn: (command: CreateEquipment) => createEquipment(command),
+    onSuccess: (created) => {
+      queryClient.setQueryData<Equipment[]>(['equipment', user.labId], (current = []) =>
+        [...current, created].sort((left, right) => left.name.localeCompare(right.name, 'de')),
+      )
+      void queryClient.invalidateQueries({ queryKey: ['dashboard-summary', user.labId] })
+      setShowCreateForm(false)
+      setSelectedEquipment(created)
+      setNotice(`${created.name} wurde dem Gerätebestand hinzugefügt.`)
+    },
   })
 
   const filtered = (equipment.data ?? []).filter((item) =>
@@ -35,7 +52,46 @@ export function EquipmentPage({ onNavigate, labId, labName }: EquipmentPageProps
         eyebrow="Gerätekatalog"
         title="Laborgeräte"
         description="Durchsuchen Sie den Gerätebestand und prüfen Sie die aktuelle Verfügbarkeit."
+        actions={
+          isTechnician ? (
+            <button
+              type="button"
+              onClick={() => {
+                creation.reset()
+                setNotice(null)
+                setSelectedEquipment(null)
+                setShowCreateForm(true)
+              }}
+              className="inline-flex min-h-10 items-center gap-2 rounded-md bg-brand-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-800"
+            >
+              <Icon name="plus" className="size-4" />
+              Gerät hinzufügen
+            </button>
+          ) : undefined
+        }
       />
+
+      {notice && (
+        <div
+          className="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800"
+          role="status"
+        >
+          {notice}
+        </div>
+      )}
+
+      {showCreateForm && isTechnician && (
+        <CreateEquipmentForm
+          labName={user.labName}
+          pending={creation.isPending}
+          error={equipmentCreationError(creation.error)}
+          onCancel={() => {
+            creation.reset()
+            setShowCreateForm(false)
+          }}
+          onSubmit={(command) => creation.mutate(command)}
+        />
+      )}
 
       <div className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center">
         <label className="relative flex-1">
@@ -53,7 +109,7 @@ export function EquipmentPage({ onNavigate, labId, labName }: EquipmentPageProps
         </label>
         <span className="inline-flex shrink-0 items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm font-medium text-slate-700">
           <Icon name="location" className="size-4" />
-          {labName}
+          {user.labName}
         </span>
       </div>
 
@@ -84,7 +140,7 @@ export function EquipmentPage({ onNavigate, labId, labName }: EquipmentPageProps
                 <StatusBadge status={selectedEquipment.status} />
                 <AccessPolicyBadge policy={selectedEquipment.accessPolicy} />
                 <span className="rounded-full border border-slate-200 px-2.5 py-1 text-xs font-bold text-slate-600">
-                  {labName}
+                  {user.labName}
                 </span>
               </div>
               <h2 className="mt-3 text-xl font-semibold tracking-tight text-ink-950">
@@ -118,7 +174,7 @@ export function EquipmentPage({ onNavigate, labId, labName }: EquipmentPageProps
                 </div>
               </dl>
             </div>
-            {selectedEquipment.status === 'AVAILABLE' ? (
+            {selectedEquipment.status === 'AVAILABLE' && isBorrower ? (
               <AppLink
                 to="/requests"
                 onNavigate={onNavigate}
@@ -127,11 +183,11 @@ export function EquipmentPage({ onNavigate, labId, labName }: EquipmentPageProps
                 Ausleihe anfragen
                 <Icon name="arrow" className="size-4" />
               </AppLink>
-            ) : (
+            ) : selectedEquipment.status !== 'AVAILABLE' ? (
               <span className="rounded-md border border-slate-200 bg-slate-50 px-4 py-2.5 text-center text-sm font-medium text-slate-500">
                 Derzeit nicht anfragbar
               </span>
-            )}
+            ) : null}
           </div>
         </section>
       )}
@@ -156,4 +212,15 @@ export function EquipmentPage({ onNavigate, labId, labName }: EquipmentPageProps
       )}
     </div>
   )
+}
+
+function equipmentCreationError(error: Error | null) {
+  if (!error) return null
+  if (error instanceof ApiError && error.status === 409) {
+    return 'Diese Inventarnummer ist im Labor bereits vergeben.'
+  }
+  if (error instanceof ApiError && error.status === 400) {
+    return 'Prüfen Sie Bild, Inventardaten und Zugangsvoraussetzung.'
+  }
+  return 'Das Gerät konnte nicht gespeichert werden. Bitte versuchen Sie es erneut.'
 }

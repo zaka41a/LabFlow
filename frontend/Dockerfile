@@ -12,7 +12,10 @@ RUN npm run build
 
 FROM nginx:1.29.3-alpine
 
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+ENV LABFLOW_OIDC_FORM_ACTION_ORIGIN=http://keycloak.localhost:8180 \
+    NGINX_ENVSUBST_FILTER=^LABFLOW_
+
+COPY nginx.conf /etc/nginx/templates/default.conf.template
 COPY --from=build /workspace/dist /usr/share/nginx/html
 
 EXPOSE 80

@@ -17,6 +17,7 @@ services:
     ports:
       - "127.0.0.1:8180:8080"
     volumes:
+      - keycloak-data:/opt/keycloak/data
       - ./identity/labflow-realm.json:/opt/keycloak/data/import/labflow-realm.json:ro
     healthcheck:
       test:
@@ -96,6 +97,8 @@ services:
     build:
       context: ./frontend
     init: true
+    environment:
+      LABFLOW_OIDC_FORM_ACTION_ORIGIN: http://keycloak.localhost:8180
     ports:
       - "127.0.0.1:80:80"
       - "127.0.0.1:5173:80"
@@ -116,3 +119,4 @@ services:
 
 volumes:
   azurite-data:
+  keycloak-data:

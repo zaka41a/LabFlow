@@ -1,6 +1,7 @@
 import type {
   AuthenticatedUser,
   AuthenticationConfig,
+  CreateEquipment,
   CreateLoanRequest,
   DashboardSummary,
   Equipment,
@@ -15,6 +16,7 @@ const unsafeMethods = new Set(['POST', 'PUT', 'PATCH', 'DELETE'])
 
 interface CsrfToken {
   headerName: string
+  parameterName: string
   token: string
 }
 
@@ -149,8 +151,21 @@ export async function login(credentials: LoginCredentials) {
 }
 
 export async function logout() {
+  const token = await getCsrfToken()
+  const form = document.createElement('form')
+  const csrfInput = document.createElement('input')
+
+  form.method = 'POST'
+  form.action = `${baseUrl}/api/auth/logout`
+  form.hidden = true
+  csrfInput.type = 'hidden'
+  csrfInput.name = token.parameterName
+  csrfInput.value = token.token
+  form.appendChild(csrfInput)
+  document.body.appendChild(form)
+
   try {
-    await apiRequest<void>('/api/auth/logout', { method: 'POST' })
+    form.submit()
   } finally {
     csrfToken = null
     csrfRequest = null
@@ -159,6 +174,23 @@ export async function logout() {
 
 export function getEquipment() {
   return apiRequest<Equipment[]>('/api/equipment')
+}
+
+export function createEquipment(command: CreateEquipment) {
+  const body = new FormData()
+  body.set('name', command.name.trim())
+  body.set('type', command.type)
+  body.set('serialNumber', command.serialNumber.trim())
+  body.set('accessPolicy', command.accessPolicy)
+  if (command.requiredQualification?.trim()) {
+    body.set('requiredQualification', command.requiredQualification.trim())
+  }
+  body.set('image', command.image)
+
+  return apiRequest<Equipment>('/api/equipment', {
+    method: 'POST',
+    body,
+  })
 }
 
 export function getDashboardSummary() {

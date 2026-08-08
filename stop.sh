@@ -14,4 +14,4 @@ cd "$project_directory"
 
 printf '[LabFlow] Stoppe alle LabFlow Dienste ...\n'
 docker compose --file "$compose_file" down --remove-orphans
-printf '[LabFlow] Alle Dienste sind gestoppt. Das lokale Azure Datenvolume bleibt erhalten.\n'
+printf '[LabFlow] Alle Dienste sind gestoppt. Azure und Keycloak Datenvolumes bleiben erhalten.\n'

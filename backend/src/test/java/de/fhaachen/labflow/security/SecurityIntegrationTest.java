@@ -7,17 +7,22 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import tools.jackson.databind.ObjectMapper;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
@@ -27,11 +32,15 @@ class SecurityIntegrationTest {
     @Autowired
     private MockMvc mockMvc;
 
+    @Autowired
+    private ObjectMapper objectMapper;
+
     @Test
     void csrfTokenIsAvailableBeforeAuthentication() throws Exception {
         mockMvc.perform(get("/api/auth/csrf"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.headerName").value("X-CSRF-TOKEN"))
+                .andExpect(jsonPath("$.parameterName").value("_csrf"))
                 .andExpect(jsonPath("$.token").isNotEmpty());
     }
 
@@ -43,6 +52,15 @@ class SecurityIntegrationTest {
                 .andExpect(jsonPath("$.title").value("Authentifizierung erforderlich"))
                 .andExpect(jsonPath("$.code").value("AUTHENTICATION_REQUIRED"))
                 .andExpect(jsonPath("$.correlationId").value("security-test-42"));
+    }
+
+    @Test
+    void unknownApiRouteReturnsProblemDetailsNotFound() throws Exception {
+        mockMvc.perform(get("/api/unknown")
+                        .with(user("borrower").roles(LabFlowRole.BORROWER.name())))
+                .andExpect(status().isNotFound())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.code").value("RESOURCE_NOT_FOUND"));
     }
 
     @Test
@@ -120,19 +138,123 @@ class SecurityIntegrationTest {
     }
 
     @Test
-    void logoutInvalidatesTheAuthenticatedSession() throws Exception {
-        MvcResult login = mockMvc.perform(post("/api/auth/login")
-                        .with(csrf())
-                        .param("username", "manager@labflow.local")
-                        .param("password", "Manager2026!"))
-                .andExpect(status().isNoContent())
+    void onlyTechniciansCanCreateEquipmentWithAnUploadedImage() throws Exception {
+        MockMultipartFile image = new MockMultipartFile(
+                "image",
+                "laborwaage.png",
+                MediaType.IMAGE_PNG_VALUE,
+                new byte[]{(byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A}
+        );
+        MockHttpSession borrowerSession = login(
+                "borrower@labflow.local",
+                "Borrower2026!"
+        );
+
+        mockMvc.perform(multipart("/api/equipment")
+                        .file(image)
+                        .param("name", "Präzisionswaage")
+                        .param("type", "LABORATORY_DEVICE")
+                        .param("serialNumber", "TST-2026-401")
+                        .param("accessPolicy", "QUALIFICATION_REQUIRED")
+                        .param("requiredQualification", "Einweisung in die Präzisionswaage")
+                        .session(borrowerSession)
+                        .with(csrf()))
+                .andExpect(status().isForbidden());
+
+        MockHttpSession technicianSession = login(
+                "technician@labflow.local",
+                "Technician2026!"
+        );
+        MvcResult creation = mockMvc.perform(multipart("/api/equipment")
+                        .file(image)
+                        .param("name", "Präzisionswaage")
+                        .param("type", "LABORATORY_DEVICE")
+                        .param("serialNumber", "TST-2026-401")
+                        .param("accessPolicy", "QUALIFICATION_REQUIRED")
+                        .param("requiredQualification", "Einweisung in die Präzisionswaage")
+                        .session(technicianSession)
+                        .with(csrf()))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.labId").value("FH_AACHEN"))
+                .andExpect(jsonPath("$.status").value("AVAILABLE"))
+                .andExpect(jsonPath("$.serialNumber").value("TST-2026-401"))
                 .andReturn();
-        MockHttpSession session = (MockHttpSession) login.getRequest().getSession(false);
+
+        String equipmentId = objectMapper.readTree(creation.getResponse().getContentAsByteArray())
+                .get("id")
+                .stringValue();
+        mockMvc.perform(get("/api/equipment/{equipmentId}/image", equipmentId)
+                        .session(technicianSession))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.IMAGE_PNG))
+                .andExpect(header().string("Cache-Control", "max-age=2592000, private, immutable"))
+                .andExpect(content().bytes(image.getBytes()));
+    }
+
+    @Test
+    void missingEquipmentImageProducesAControlledValidationError() throws Exception {
+        MockHttpSession technicianSession = login(
+                "technician@labflow.local",
+                "Technician2026!"
+        );
+
+        mockMvc.perform(multipart("/api/equipment")
+                        .param("name", "Präzisionswaage")
+                        .param("type", "LABORATORY_DEVICE")
+                        .param("serialNumber", "TST-2026-402")
+                        .param("accessPolicy", "OPEN")
+                        .session(technicianSession)
+                        .with(csrf()))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+    }
+
+    @Test
+    void malformedEquipmentTypeProducesAControlledValidationError() throws Exception {
+        MockHttpSession technicianSession = login(
+                "technician@labflow.local",
+                "Technician2026!"
+        );
+        MockMultipartFile image = new MockMultipartFile(
+                "image",
+                "laborwaage.png",
+                MediaType.IMAGE_PNG_VALUE,
+                new byte[]{(byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A}
+        );
+
+        mockMvc.perform(multipart("/api/equipment")
+                        .file(image)
+                        .param("name", "Präzisionswaage")
+                        .param("type", "UNSUPPORTED_TYPE")
+                        .param("serialNumber", "TST-2026-403")
+                        .param("accessPolicy", "OPEN")
+                        .session(technicianSession)
+                        .with(csrf()))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+    }
+
+    @Test
+    void logoutInvalidatesTheAuthenticatedSession() throws Exception {
+        MockHttpSession session = login("manager@labflow.local", "Manager2026!");
 
         mockMvc.perform(post("/api/auth/logout").session(session).with(csrf()))
-                .andExpect(status().isNoContent());
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/"));
 
         mockMvc.perform(get("/api/auth/me").session(session))
                 .andExpect(status().isUnauthorized());
+    }
+
+    private MockHttpSession login(String username, String password) throws Exception {
+        MvcResult result = mockMvc.perform(post("/api/auth/login")
+                        .with(csrf())
+                        .param("username", username)
+                        .param("password", password))
+                .andExpect(status().isNoContent())
+                .andReturn();
+        return (MockHttpSession) result.getRequest().getSession(false);
     }
 }

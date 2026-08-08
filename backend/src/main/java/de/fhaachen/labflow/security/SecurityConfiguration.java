@@ -17,9 +17,12 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
+import org.springframework.security.oauth2.client.oidc.web.logout.OidcClientInitiatedLogoutSuccessHandler;
+import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
 
 import java.util.Locale;
 import java.util.Map;
@@ -67,6 +70,9 @@ public class SecurityConfiguration {
             LabFlowOidcUserService oidcUserService,
             ApiProblemWriter problemWriter
     ) throws Exception {
+        ClientRegistrationRepository registrationRepository = registrations.getIfAvailable();
+        LogoutSuccessHandler logoutSuccessHandler = logoutSuccessHandler(registrationRepository);
+
         http
                 .cors(Customizer.withDefaults())
                 .authorizeHttpRequests(authorize -> authorize
@@ -80,6 +86,8 @@ public class SecurityConfiguration {
                                 "/oauth2/**",
                                 "/login/oauth2/**"
                         ).permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/equipment")
+                        .hasRole(LabFlowRole.TECHNICIAN.name())
                         .requestMatchers("/api/approvals/**").hasRole(LabFlowRole.LAB_MANAGER.name())
                         .requestMatchers("/api/handover/**").hasRole(LabFlowRole.TECHNICIAN.name())
                         .requestMatchers("/api/audit-events/**").hasAnyRole(
@@ -111,8 +119,7 @@ public class SecurityConfiguration {
                         .clearAuthentication(true)
                         .invalidateHttpSession(true)
                         .deleteCookies("LABFLOW_SESSION")
-                        .logoutSuccessHandler((request, response, authentication) ->
-                                response.setStatus(204))
+                        .logoutSuccessHandler(logoutSuccessHandler)
                 )
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
@@ -139,7 +146,7 @@ public class SecurityConfiguration {
                                 ))
                 );
 
-        if (registrations.getIfAvailable() != null) {
+        if (registrationRepository != null) {
             http.oauth2Login(oauth -> oauth
                     .userInfoEndpoint(userInfo -> userInfo
                             .oidcUserService(oidcUserService::loadUser))
@@ -152,6 +159,26 @@ public class SecurityConfiguration {
         }
 
         return http.build();
+    }
+
+    LogoutSuccessHandler logoutSuccessHandler(
+            ClientRegistrationRepository registrationRepository
+    ) {
+        if (registrationRepository == null) {
+            return (request, response, authentication) -> response.sendRedirect("/");
+        }
+
+        OidcClientInitiatedLogoutSuccessHandler oidcHandler =
+                new OidcClientInitiatedLogoutSuccessHandler(registrationRepository);
+        oidcHandler.setPostLogoutRedirectUri("{baseUrl}/");
+
+        return (request, response, authentication) -> {
+            if (authentication != null && authentication.getPrincipal() instanceof OidcUser) {
+                oidcHandler.onLogoutSuccess(request, response, authentication);
+                return;
+            }
+            response.sendRedirect("/");
+        };
     }
 
     private static String normalizeUsername(String username) {

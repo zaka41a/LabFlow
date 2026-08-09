@@ -137,6 +137,36 @@ class LabFlowOidcUserTest {
                 .hasMessageContaining("no LabFlow role assignment");
     }
 
+    @Test
+    void ignoresInheritedPermissionClaimsWhenUsernameHasAnExplicitRole() {
+        Instant issuedAt = Instant.parse("2026-08-08T19:00:00Z");
+        OidcIdToken token = OidcIdToken.withTokenValue("gitlab-owner-token")
+                .issuedAt(issuedAt)
+                .expiresAt(issuedAt.plusSeconds(300))
+                .issuer("https://git-ce.rwth-aachen.de")
+                .subject("3991")
+                .claim("preferred_username", "zaka41a")
+                .claim("name", "Zakaria Sabiri")
+                .claim("https://gitlab.org/claims/groups/owner", List.of(
+                        "lsit-2026/roles/labflow/borrower",
+                        "lsit-2026/roles/labflow/lab-manager",
+                        "lsit-2026/roles/labflow/technician"
+                ))
+                .build();
+        LabFlowOidcRoleMappingProperties mapping = mapping(
+                List.of("zaka41a", "lsit-2026/roles/labflow/borrower"),
+                List.of("lsit-2026/roles/labflow/lab-manager"),
+                List.of("lsit-2026/roles/labflow/technician")
+        );
+
+        LabFlowOidcUser principal = LabFlowOidcUser.from(
+                new DefaultOidcUser(List.of(), token, "sub"),
+                mapping
+        );
+
+        assertThat(principal.role()).isEqualTo(LabFlowRole.BORROWER);
+    }
+
     private static LabFlowOidcRoleMappingProperties emptyRoleMapping() {
         return mapping(List.of(), List.of(), List.of());
     }

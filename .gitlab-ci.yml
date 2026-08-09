@@ -216,6 +216,11 @@ azure:deploy:
       registry_password_base64="$(printf '%s' "$registry_password" | base64 | tr -d '\n=')"
       unset registry_password
 
+      borrower_password_hash_base64="$(printf '%s' "$TF_VAR_borrower_password_hash" | base64 | tr -d '\n=')"
+      manager_password_hash_base64="$(printf '%s' "$TF_VAR_manager_password_hash" | base64 | tr -d '\n=')"
+      technician_password_hash_base64="$(printf '%s' "$TF_VAR_technician_password_hash" | base64 | tr -d '\n=')"
+      unset TF_VAR_borrower_password_hash TF_VAR_manager_password_hash TF_VAR_technician_password_hash
+
       deployment_output="$(az vm run-command invoke \
         --resource-group "$RESOURCE_GROUP" \
         --name "$VM_NAME" \
@@ -230,6 +235,9 @@ azure:deploy:
         "$OIDC_BORROWER_IDENTITIES" \
         "$OIDC_MANAGER_IDENTITIES" \
         "$OIDC_TECHNICIAN_IDENTITIES" \
+        "$borrower_password_hash_base64" \
+        "$manager_password_hash_base64" \
+        "$technician_password_hash_base64" \
         --query 'value[0].message' \
         --output tsv)"
       printf '%s\n' "$deployment_output"

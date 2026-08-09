@@ -57,18 +57,33 @@ variable "borrower_password_hash" {
   description = "BCrypt hash for the local Borrower test account."
   type        = string
   sensitive   = true
+
+  validation {
+    condition     = can(regex("^\\$2[aby]\\$12\\$[./A-Za-z0-9]{53}$", var.borrower_password_hash))
+    error_message = "The Borrower password must be a BCrypt hash with cost factor 12."
+  }
 }
 
 variable "manager_password_hash" {
   description = "BCrypt hash for the local Lab Manager test account."
   type        = string
   sensitive   = true
+
+  validation {
+    condition     = can(regex("^\\$2[aby]\\$12\\$[./A-Za-z0-9]{53}$", var.manager_password_hash))
+    error_message = "The Lab Manager password must be a BCrypt hash with cost factor 12."
+  }
 }
 
 variable "technician_password_hash" {
   description = "BCrypt hash for the local Technician test account."
   type        = string
   sensitive   = true
+
+  validation {
+    condition     = can(regex("^\\$2[aby]\\$12\\$[./A-Za-z0-9]{53}$", var.technician_password_hash))
+    error_message = "The Technician password must be a BCrypt hash with cost factor 12."
+  }
 }
 
 variable "oidc_client_id" {

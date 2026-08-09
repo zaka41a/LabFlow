@@ -2,8 +2,8 @@
 
 set -eu
 
-if [ "$#" -ne 8 ]; then
-  printf '%s\n' 'Usage: azure-deploy-vm.sh REGISTRY USERNAME PASSWORD_BASE64 REVISION OIDC_METHOD BORROWERS MANAGERS TECHNICIANS' >&2
+if [ "$#" -ne 11 ]; then
+  printf '%s\n' 'Usage: azure-deploy-vm.sh REGISTRY USERNAME PASSWORD_BASE64 REVISION OIDC_METHOD BORROWERS MANAGERS TECHNICIANS BORROWER_HASH_BASE64 MANAGER_HASH_BASE64 TECHNICIAN_HASH_BASE64' >&2
   exit 64
 fi
 
@@ -15,6 +15,9 @@ readonly oidc_client_authentication_method="$5"
 readonly oidc_borrower_identities="$6"
 readonly oidc_manager_identities="$7"
 readonly oidc_technician_identities="$8"
+borrower_password_hash_base64="$9"
+manager_password_hash_base64="${10}"
+technician_password_hash_base64="${11}"
 readonly compose_file="${LABFLOW_COMPOSE_FILE:-/opt/labflow/compose.yaml}"
 readonly docker_config="${LABFLOW_DOCKER_CONFIG:-/root/.docker}"
 
@@ -46,6 +49,38 @@ do
   esac
 done
 
+decode_base64() {
+  encoded_value="$1"
+  case $((${#encoded_value} % 4)) in
+    0) ;;
+    2) encoded_value="${encoded_value}==" ;;
+    3) encoded_value="${encoded_value}=" ;;
+    *) return 1 ;;
+  esac
+  printf '%s' "$encoded_value" | base64 --decode
+}
+
+borrower_password_hash="$(decode_base64 "$borrower_password_hash_base64")"
+manager_password_hash="$(decode_base64 "$manager_password_hash_base64")"
+technician_password_hash="$(decode_base64 "$technician_password_hash_base64")"
+unset borrower_password_hash_base64 manager_password_hash_base64 technician_password_hash_base64
+
+for password_hash in \
+  "$borrower_password_hash" \
+  "$manager_password_hash" \
+  "$technician_password_hash"
+do
+  if ! printf '%s\n' "$password_hash" | \
+    grep -Eq '^\$2[aby]\$12\$[./A-Za-z0-9]{53}$'; then
+    printf '%s\n' 'A local account password is not a BCrypt cost-12 hash.' >&2
+    exit 64
+  fi
+done
+
+borrower_password_hash_compose="$(printf '%s' "$borrower_password_hash" | sed 's/\$/$$/g')"
+manager_password_hash_compose="$(printf '%s' "$manager_password_hash" | sed 's/\$/$$/g')"
+technician_password_hash_compose="$(printf '%s' "$technician_password_hash" | sed 's/\$/$$/g')"
+
 case $((${#registry_password_base64} % 4)) in
   0) ;;
   2) registry_password_base64="${registry_password_base64}==" ;;
@@ -76,6 +111,9 @@ sed -E -i.bak \
   -e "s|^[[:space:]]*LABFLOW_OIDC_BORROWER_IDENTITIES:.*|      LABFLOW_OIDC_BORROWER_IDENTITIES: \"${oidc_borrower_identities}\"|" \
   -e "s|^[[:space:]]*LABFLOW_OIDC_MANAGER_IDENTITIES:.*|      LABFLOW_OIDC_MANAGER_IDENTITIES: \"${oidc_manager_identities}\"|" \
   -e "s|^[[:space:]]*LABFLOW_OIDC_TECHNICIAN_IDENTITIES:.*|      LABFLOW_OIDC_TECHNICIAN_IDENTITIES: \"${oidc_technician_identities}\"|" \
+  -e "s|^[[:space:]]*LABFLOW_BORROWER_PASSWORD_HASH:.*|      LABFLOW_BORROWER_PASSWORD_HASH: \"${borrower_password_hash_compose}\"|" \
+  -e "s|^[[:space:]]*LABFLOW_MANAGER_PASSWORD_HASH:.*|      LABFLOW_MANAGER_PASSWORD_HASH: \"${manager_password_hash_compose}\"|" \
+  -e "s|^[[:space:]]*LABFLOW_TECHNICIAN_PASSWORD_HASH:.*|      LABFLOW_TECHNICIAN_PASSWORD_HASH: \"${technician_password_hash_compose}\"|" \
   -e "s|labflow-backend:[^[:space:]]+|labflow-backend:${revision}|" \
   -e "s|labflow-frontend:[^[:space:]]+|labflow-frontend:${revision}|" \
   "$compose_file"
@@ -88,6 +126,12 @@ grep --fixed-strings --line-regexp --quiet -- \
   "      LABFLOW_OIDC_MANAGER_IDENTITIES: \"${oidc_manager_identities}\"" "$compose_file"
 grep --fixed-strings --line-regexp --quiet -- \
   "      LABFLOW_OIDC_TECHNICIAN_IDENTITIES: \"${oidc_technician_identities}\"" "$compose_file"
+grep --fixed-strings --line-regexp --quiet -- \
+  "      LABFLOW_BORROWER_PASSWORD_HASH: \"${borrower_password_hash_compose}\"" "$compose_file"
+grep --fixed-strings --line-regexp --quiet -- \
+  "      LABFLOW_MANAGER_PASSWORD_HASH: \"${manager_password_hash_compose}\"" "$compose_file"
+grep --fixed-strings --line-regexp --quiet -- \
+  "      LABFLOW_TECHNICIAN_PASSWORD_HASH: \"${technician_password_hash_compose}\"" "$compose_file"
 
 if ! DOCKER_CONFIG="$docker_config" docker compose --file "$compose_file" config --quiet; then
   mv "${compose_file}.bak" "$compose_file"
@@ -103,10 +147,18 @@ DOCKER_CONFIG="$docker_config" docker compose --file "$compose_file" \
     test "$LABFLOW_OIDC_BORROWER_IDENTITIES" = "$1"
     test "$LABFLOW_OIDC_MANAGER_IDENTITIES" = "$2"
     test "$LABFLOW_OIDC_TECHNICIAN_IDENTITIES" = "$3"
+    test "$LABFLOW_BORROWER_PASSWORD_HASH" = "$4"
+    test "$LABFLOW_MANAGER_PASSWORD_HASH" = "$5"
+    test "$LABFLOW_TECHNICIAN_PASSWORD_HASH" = "$6"
   ' sh \
   "$oidc_borrower_identities" \
   "$oidc_manager_identities" \
-  "$oidc_technician_identities"
+  "$oidc_technician_identities" \
+  "$borrower_password_hash" \
+  "$manager_password_hash" \
+  "$technician_password_hash"
+unset borrower_password_hash manager_password_hash technician_password_hash
+unset borrower_password_hash_compose manager_password_hash_compose technician_password_hash_compose
 DOCKER_CONFIG="$docker_config" docker compose --file "$compose_file" ps
 
 printf 'Deployed LabFlow revision %s.\n' "$revision"

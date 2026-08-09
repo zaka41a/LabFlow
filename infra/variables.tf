@@ -85,7 +85,7 @@ variable "oidc_client_secret" {
 variable "oidc_client_authentication_method" {
   description = "OAuth client authentication method used at the token endpoint."
   type        = string
-  default     = "client_secret_basic"
+  default     = "client_secret_post"
 
   validation {
     condition = contains([

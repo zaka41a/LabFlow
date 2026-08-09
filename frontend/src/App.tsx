@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AppShell } from './components/AppShell'
 import { LoginPage, SessionLoadingScreen } from './features/auth/LoginPage'
+import { oidcLoginError } from './features/auth/oidcLoginError'
 import { DashboardPage } from './features/dashboard/DashboardPage'
 import { EquipmentPage } from './features/dashboard/EquipmentPage'
 import { RequestsPage } from './features/requests/RequestsPage'
@@ -23,6 +24,7 @@ function getCurrentPath(): AppPath {
 export default function App() {
   const queryClient = useQueryClient()
   const [path, setPath] = useState<AppPath>(getCurrentPath)
+  const [externalLoginError] = useState(() => oidcLoginError(window.location.search))
 
   const session = useQuery({
     queryKey: ['session'],
@@ -90,7 +92,13 @@ export default function App() {
     return (
       <LoginPage
         pending={loginMutation.isPending}
-        error={loginMutation.isPending ? null : loginError(loginMutation.error ?? session.error)}
+        error={
+          loginMutation.isPending
+            ? null
+            : (loginError(loginMutation.error) ??
+              externalLoginError ??
+              sessionAvailabilityError(session.error))
+        }
         onLogin={(credentials) => loginMutation.mutateAsync(credentials).then(() => undefined)}
         oidcLoginUrl={authenticationConfig.data?.oidcLoginUrl}
       />
@@ -122,4 +130,11 @@ function loginError(error: Error | null) {
     return 'E-Mail-Adresse oder Passwort ist nicht korrekt.'
   }
   return 'Der Anmeldedienst ist momentan nicht erreichbar. Bitte versuchen Sie es erneut.'
+}
+
+function sessionAvailabilityError(error: Error | null) {
+  if (error instanceof ApiError && error.status === 401) {
+    return null
+  }
+  return loginError(error)
 }

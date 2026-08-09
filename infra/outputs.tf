@@ -8,6 +8,11 @@ output "oidc_redirect_uri" {
   value       = "http://${azurerm_public_ip.application.fqdn}/login/oauth2/code/labflow"
 }
 
+output "oidc_client_authentication_method" {
+  description = "Client authentication method configured for the GitLab token endpoint."
+  value       = var.oidc_client_authentication_method
+}
+
 output "application_public_ip" {
   description = "Public IPv4 address assigned to the application VM."
   value       = azurerm_public_ip.application.ip_address

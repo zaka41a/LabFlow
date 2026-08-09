@@ -256,7 +256,7 @@ POST   /api/handover/{id}/return              Technician
 | `LABFLOW_SESSION_SECURE`          | Session Cookie nur über HTTPS   |
 | `OIDC_CLIENT_ID`                  | OIDC Client ID                  |
 | `OIDC_CLIENT_SECRET`              | Secret eines vertraulichen Clients |
-| `OIDC_CLIENT_AUTHENTICATION_METHOD` | `none` oder `client_secret_basic` |
+| `OIDC_CLIENT_AUTHENTICATION_METHOD` | `none`, `client_secret_basic` oder `client_secret_post` |
 | `OIDC_PUBLIC_ISSUER_URI`          | erwarteter Issuer der ID Tokens |
 | `OIDC_AUTHORIZATION_URI`          | Authorization Endpoint          |
 | `OIDC_TOKEN_URI`                  | Token Endpoint                  |

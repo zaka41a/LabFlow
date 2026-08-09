@@ -13,6 +13,8 @@ grep --fixed-strings --quiet -- 'default     = "Standard_B2ats_v2"' "$variables_
 grep --fixed-strings --quiet -- 'az acr credential show' "$pipeline_file"
 grep --fixed-strings --quiet -- '--password-stdin' "$pipeline_file"
 grep --fixed-strings --quiet -- 'cloud-init status --wait' "$pipeline_file"
+grep --fixed-strings --quiet -- 'oidc_client_authentication_method' "$pipeline_file"
+grep --fixed-strings --quiet -- 'OIDC_CLIENT_AUTHENTICATION_METHOD:' "$pipeline_file"
 grep --fixed-strings --quiet -- 'image_tag                  = "latest"' "$infrastructure_file"
 grep --fixed-strings --quiet -- 'ignore_changes = [custom_data]' "$infrastructure_file"
 

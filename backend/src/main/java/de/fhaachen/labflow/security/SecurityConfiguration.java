@@ -4,8 +4,6 @@ import jakarta.servlet.DispatcherType;
 import de.fhaachen.labflow.web.ApiProblemWriter;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.beans.factory.ObjectProvider;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -36,8 +34,6 @@ import java.util.stream.Collectors;
         LabFlowOidcRoleMappingProperties.class
 })
 public class SecurityConfiguration {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(SecurityConfiguration.class);
 
     @Bean
     PasswordEncoder passwordEncoder() {
@@ -71,6 +67,7 @@ public class SecurityConfiguration {
             HttpSecurity http,
             ObjectProvider<ClientRegistrationRepository> registrations,
             LabFlowOidcUserService oidcUserService,
+            OidcLoginFailureHandler oidcFailureHandler,
             ApiProblemWriter problemWriter
     ) throws Exception {
         ClientRegistrationRepository registrationRepository = registrations.getIfAvailable();
@@ -154,10 +151,7 @@ public class SecurityConfiguration {
                     .userInfoEndpoint(userInfo -> userInfo
                             .oidcUserService(oidcUserService::loadUser))
                     .defaultSuccessUrl("/", true)
-                    .failureHandler((request, response, exception) -> {
-                        LOGGER.warn("OpenID Connect login failed", exception);
-                        response.sendRedirect("/?login=oidc_error");
-                    })
+                    .failureHandler(oidcFailureHandler)
             );
         }
 

@@ -13,7 +13,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @SpringBootTest(properties = {
         "OIDC_CLIENT_ID=labflow-gitlab-test",
         "OIDC_CLIENT_SECRET=test-client-secret",
-        "OIDC_CLIENT_AUTHENTICATION_METHOD=client_secret_basic",
+        "OIDC_CLIENT_AUTHENTICATION_METHOD=client_secret_post",
         "OIDC_PUBLIC_ISSUER_URI=https://git-ce.rwth-aachen.de",
         "OIDC_AUTHORIZATION_URI=https://git-ce.rwth-aachen.de/oauth/authorize",
         "OIDC_TOKEN_URI=https://git-ce.rwth-aachen.de/oauth/token",
@@ -40,7 +40,7 @@ class OidcClientRegistrationIntegrationTest {
         assertThat(registration.getClientId()).isEqualTo("labflow-gitlab-test");
         assertThat(registration.getClientSecret()).isEqualTo("test-client-secret");
         assertThat(registration.getClientAuthenticationMethod())
-                .isEqualTo(ClientAuthenticationMethod.CLIENT_SECRET_BASIC);
+                .isEqualTo(ClientAuthenticationMethod.CLIENT_SECRET_POST);
         assertThat(registration.getProviderDetails().getAuthorizationUri())
                 .isEqualTo("https://git-ce.rwth-aachen.de/oauth/authorize");
         assertThat(registration.getProviderDetails().getTokenUri())

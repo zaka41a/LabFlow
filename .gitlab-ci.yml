@@ -153,6 +153,7 @@ azure:provision:
     - printf 'RESOURCE_GROUP=%s\n' "$(tofu output -raw resource_group_name)" >> ../deployment.env
     - printf 'VM_NAME=%s\n' "$(tofu output -raw virtual_machine_name)" >> ../deployment.env
     - printf 'APPLICATION_URL=%s\n' "$(tofu output -raw application_url)" >> ../deployment.env
+    - printf 'OIDC_CLIENT_AUTHENTICATION_METHOD=%s\n' "$(tofu output -raw oidc_client_authentication_method)" >> ../deployment.env
   artifacts:
     reports:
       dotenv: deployment.env
@@ -219,6 +220,7 @@ azure:deploy:
         "cloud-init status --wait" \
         "install -d -m 0700 /root/.docker" \
         "printf '%s' '${registry_password_base64}' | base64 --decode | docker --config /root/.docker login '${registry_server}' --username '${registry_username}' --password-stdin" \
+        "sed -i -E 's|^[[:space:]]*OIDC_CLIENT_AUTHENTICATION_METHOD:.*|            OIDC_CLIENT_AUTHENTICATION_METHOD: \"${OIDC_CLIENT_AUTHENTICATION_METHOD}\"|' /opt/labflow/compose.yaml" \
         "sed -i -E 's|(labflow-backend:)[^[:space:]]+|\\1${CI_COMMIT_SHA}|' /opt/labflow/compose.yaml" \
         "sed -i -E 's|(labflow-frontend:)[^[:space:]]+|\\1${CI_COMMIT_SHA}|' /opt/labflow/compose.yaml" \
         "systemctl restart labflow.service" \

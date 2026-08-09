@@ -68,7 +68,10 @@ public final class LabFlowOidcUser implements OidcUser, LabFlowPrincipal {
             labId = requiredClaim(source, "lab_id");
             labName = requiredClaim(source, "lab_name");
         } else {
-            role = roleMapping.roleFor(identityClaims(source));
+            role = roleMapping.roleFor(
+                    identityClaims(source, "sub", "preferred_username", "nickname", "email"),
+                    identityClaims(source, "groups_direct")
+            );
             labId = roleMapping.labId();
             labName = roleMapping.labName();
         }
@@ -76,13 +79,11 @@ public final class LabFlowOidcUser implements OidcUser, LabFlowPrincipal {
         return new LabFlowOidcUser(source, id, username, displayName, labId, labName, role);
     }
 
-    private static Set<String> identityClaims(OidcUser source) {
+    private static Set<String> identityClaims(OidcUser source, String... names) {
         Set<String> identities = new LinkedHashSet<>();
-        addClaimValues(identities, source, "sub");
-        addClaimValues(identities, source, "preferred_username");
-        addClaimValues(identities, source, "nickname");
-        addClaimValues(identities, source, "email");
-        addClaimValues(identities, source, "groups_direct");
+        for (String name : names) {
+            addClaimValues(identities, source, name);
+        }
         return Set.copyOf(identities);
     }
 

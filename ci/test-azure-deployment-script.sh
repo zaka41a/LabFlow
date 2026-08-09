@@ -33,6 +33,9 @@ services:
     image: labflowdev.azurecr.io/labflow-backend:latest
     environment:
       OIDC_CLIENT_AUTHENTICATION_METHOD: "client_secret_basic"
+      LABFLOW_OIDC_BORROWER_IDENTITIES: "stale-borrower"
+      LABFLOW_OIDC_MANAGER_IDENTITIES: "stale-manager"
+      LABFLOW_OIDC_TECHNICIAN_IDENTITIES: "stale-technician"
   frontend:
     image: labflowdev.azurecr.io/labflow-frontend:latest
 YAML
@@ -48,21 +51,37 @@ sh "$deployment_script" \
   registry-user \
   "$(printf '%s' 'registry-password' | base64 | tr -d '\n=')" \
   "$revision" \
-  client_secret_post
+  client_secret_post \
+  'zaka41a,lsit-2026/roles/labflow/borrower' \
+  'SaadFihi,lsit-2026/roles/labflow/lab-manager' \
+  'othmane022-jj,lsit-2026/roles/labflow/technician'
 
 grep --fixed-strings --quiet -- "labflow-backend:${revision}" "$compose_file"
 grep --fixed-strings --quiet -- "labflow-frontend:${revision}" "$compose_file"
 grep --fixed-strings --line-regexp --quiet -- '      OIDC_CLIENT_AUTHENTICATION_METHOD: "client_secret_post"' "$compose_file"
+grep --fixed-strings --line-regexp --quiet -- '      LABFLOW_OIDC_BORROWER_IDENTITIES: "zaka41a,lsit-2026/roles/labflow/borrower"' "$compose_file"
+grep --fixed-strings --line-regexp --quiet -- '      LABFLOW_OIDC_MANAGER_IDENTITIES: "SaadFihi,lsit-2026/roles/labflow/lab-manager"' "$compose_file"
+grep --fixed-strings --line-regexp --quiet -- '      LABFLOW_OIDC_TECHNICIAN_IDENTITIES: "othmane022-jj,lsit-2026/roles/labflow/technician"' "$compose_file"
 grep --fixed-strings --quiet -- "pull labflowdev.azurecr.io/labflow-backend:${revision}" "$docker_log"
 grep --fixed-strings --quiet -- "pull labflowdev.azurecr.io/labflow-frontend:${revision}" "$docker_log"
 grep --fixed-strings --quiet -- 'config --quiet' "$docker_log"
 grep --fixed-strings --quiet -- 'up --detach --force-recreate --remove-orphans' "$docker_log"
+grep --fixed-strings --quiet -- 'exec --no-TTY backend' "$docker_log"
 
 if LABFLOW_COMPOSE_FILE="$compose_file" PATH="${fake_bin}:$PATH" \
   sh "$deployment_script" registry user password invalid-revision client_secret_post \
+  borrower manager technician \
   >/dev/null 2>&1; then
   printf '%s\n' 'The deployment script accepted an invalid revision.' >&2
   exit 1
 fi
 
-printf '%s\n' 'Azure VM deployment script tests: 2 passed.'
+if LABFLOW_COMPOSE_FILE="$compose_file" PATH="${fake_bin}:$PATH" \
+  sh "$deployment_script" registry user password "$revision" client_secret_post \
+  'invalid identity' manager technician \
+  >/dev/null 2>&1; then
+  printf '%s\n' 'The deployment script accepted unsafe role identities.' >&2
+  exit 1
+fi
+
+printf '%s\n' 'Azure VM deployment script tests: 3 passed.'

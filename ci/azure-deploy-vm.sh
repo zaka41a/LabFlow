@@ -2,8 +2,8 @@
 
 set -eu
 
-if [ "$#" -ne 5 ]; then
-  printf '%s\n' 'Usage: azure-deploy-vm.sh REGISTRY USERNAME PASSWORD_BASE64 REVISION OIDC_METHOD' >&2
+if [ "$#" -ne 8 ]; then
+  printf '%s\n' 'Usage: azure-deploy-vm.sh REGISTRY USERNAME PASSWORD_BASE64 REVISION OIDC_METHOD BORROWERS MANAGERS TECHNICIANS' >&2
   exit 64
 fi
 
@@ -12,6 +12,9 @@ readonly registry_username="$2"
 registry_password_base64="$3"
 readonly revision="$4"
 readonly oidc_client_authentication_method="$5"
+readonly oidc_borrower_identities="$6"
+readonly oidc_manager_identities="$7"
+readonly oidc_technician_identities="$8"
 readonly compose_file="${LABFLOW_COMPOSE_FILE:-/opt/labflow/compose.yaml}"
 readonly docker_config="${LABFLOW_DOCKER_CONFIG:-/root/.docker}"
 
@@ -29,6 +32,19 @@ case "$oidc_client_authentication_method" in
     exit 64
     ;;
 esac
+
+for identities in \
+  "$oidc_borrower_identities" \
+  "$oidc_manager_identities" \
+  "$oidc_technician_identities"
+do
+  case "$identities" in
+    ''|*[!A-Za-z0-9@._,/-]*)
+      printf '%s\n' 'OIDC role identities contain unsupported characters.' >&2
+      exit 64
+      ;;
+  esac
+done
 
 case $((${#registry_password_base64} % 4)) in
   0) ;;
@@ -57,12 +73,21 @@ docker --config "$docker_config" pull "$frontend_image"
 
 sed -E -i.bak \
   -e "s|^[[:space:]]*OIDC_CLIENT_AUTHENTICATION_METHOD:.*|      OIDC_CLIENT_AUTHENTICATION_METHOD: \"${oidc_client_authentication_method}\"|" \
+  -e "s|^[[:space:]]*LABFLOW_OIDC_BORROWER_IDENTITIES:.*|      LABFLOW_OIDC_BORROWER_IDENTITIES: \"${oidc_borrower_identities}\"|" \
+  -e "s|^[[:space:]]*LABFLOW_OIDC_MANAGER_IDENTITIES:.*|      LABFLOW_OIDC_MANAGER_IDENTITIES: \"${oidc_manager_identities}\"|" \
+  -e "s|^[[:space:]]*LABFLOW_OIDC_TECHNICIAN_IDENTITIES:.*|      LABFLOW_OIDC_TECHNICIAN_IDENTITIES: \"${oidc_technician_identities}\"|" \
   -e "s|labflow-backend:[^[:space:]]+|labflow-backend:${revision}|" \
   -e "s|labflow-frontend:[^[:space:]]+|labflow-frontend:${revision}|" \
   "$compose_file"
 
 grep --fixed-strings --quiet -- "$backend_image" "$compose_file"
 grep --fixed-strings --quiet -- "$frontend_image" "$compose_file"
+grep --fixed-strings --line-regexp --quiet -- \
+  "      LABFLOW_OIDC_BORROWER_IDENTITIES: \"${oidc_borrower_identities}\"" "$compose_file"
+grep --fixed-strings --line-regexp --quiet -- \
+  "      LABFLOW_OIDC_MANAGER_IDENTITIES: \"${oidc_manager_identities}\"" "$compose_file"
+grep --fixed-strings --line-regexp --quiet -- \
+  "      LABFLOW_OIDC_TECHNICIAN_IDENTITIES: \"${oidc_technician_identities}\"" "$compose_file"
 
 if ! DOCKER_CONFIG="$docker_config" docker compose --file "$compose_file" config --quiet; then
   mv "${compose_file}.bak" "$compose_file"
@@ -73,6 +98,15 @@ rm -f "${compose_file}.bak"
 
 DOCKER_CONFIG="$docker_config" docker compose --file "$compose_file" \
   up --detach --force-recreate --remove-orphans
+DOCKER_CONFIG="$docker_config" docker compose --file "$compose_file" \
+  exec --no-TTY backend sh -eu -c '
+    test "$LABFLOW_OIDC_BORROWER_IDENTITIES" = "$1"
+    test "$LABFLOW_OIDC_MANAGER_IDENTITIES" = "$2"
+    test "$LABFLOW_OIDC_TECHNICIAN_IDENTITIES" = "$3"
+  ' sh \
+  "$oidc_borrower_identities" \
+  "$oidc_manager_identities" \
+  "$oidc_technician_identities"
 DOCKER_CONFIG="$docker_config" docker compose --file "$compose_file" ps
 
 printf 'Deployed LabFlow revision %s.\n' "$revision"

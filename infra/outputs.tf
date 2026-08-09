@@ -13,6 +13,21 @@ output "oidc_client_authentication_method" {
   value       = var.oidc_client_authentication_method
 }
 
+output "oidc_borrower_identities" {
+  description = "Comma-separated identities assigned to the Borrower role."
+  value       = join(",", var.oidc_borrower_identities)
+}
+
+output "oidc_manager_identities" {
+  description = "Comma-separated identities assigned to the Lab Manager role."
+  value       = join(",", var.oidc_manager_identities)
+}
+
+output "oidc_technician_identities" {
+  description = "Comma-separated identities assigned to the Technician role."
+  value       = join(",", var.oidc_technician_identities)
+}
+
 output "application_public_ip" {
   description = "Public IPv4 address assigned to the application VM."
   value       = azurerm_public_ip.application.ip_address

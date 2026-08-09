@@ -154,6 +154,9 @@ azure:provision:
     - printf 'VM_NAME=%s\n' "$(tofu output -raw virtual_machine_name)" >> ../deployment.env
     - printf 'APPLICATION_URL=%s\n' "$(tofu output -raw application_url)" >> ../deployment.env
     - printf 'OIDC_CLIENT_AUTHENTICATION_METHOD=%s\n' "$(tofu output -raw oidc_client_authentication_method)" >> ../deployment.env
+    - printf 'OIDC_BORROWER_IDENTITIES=%s\n' "$(tofu output -raw oidc_borrower_identities)" >> ../deployment.env
+    - printf 'OIDC_MANAGER_IDENTITIES=%s\n' "$(tofu output -raw oidc_manager_identities)" >> ../deployment.env
+    - printf 'OIDC_TECHNICIAN_IDENTITIES=%s\n' "$(tofu output -raw oidc_technician_identities)" >> ../deployment.env
   artifacts:
     reports:
       dotenv: deployment.env
@@ -224,6 +227,9 @@ azure:deploy:
         "$registry_password_base64" \
         "$CI_COMMIT_SHA" \
         "$OIDC_CLIENT_AUTHENTICATION_METHOD" \
+        "$OIDC_BORROWER_IDENTITIES" \
+        "$OIDC_MANAGER_IDENTITIES" \
+        "$OIDC_TECHNICIAN_IDENTITIES" \
         --query 'value[0].message' \
         --output tsv)"
       printf '%s\n' "$deployment_output"

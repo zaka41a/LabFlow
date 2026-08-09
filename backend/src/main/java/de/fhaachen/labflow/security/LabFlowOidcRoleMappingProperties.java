@@ -25,6 +25,18 @@ public record LabFlowOidcRoleMappingProperties(
     }
 
     public LabFlowRole roleFor(Set<String> identityClaims) {
+        return requireSingleRole(matchingRoles(identityClaims));
+    }
+
+    public LabFlowRole roleFor(Set<String> personalIdentities, Set<String> directGroups) {
+        EnumSet<LabFlowRole> personalMatches = matchingRoles(personalIdentities);
+        if (!personalMatches.isEmpty()) {
+            return requireSingleRole(personalMatches);
+        }
+        return requireSingleRole(matchingRoles(directGroups));
+    }
+
+    private EnumSet<LabFlowRole> matchingRoles(Set<String> identityClaims) {
         Set<String> normalizedClaims = normalize(identityClaims);
         EnumSet<LabFlowRole> matches = EnumSet.noneOf(LabFlowRole.class);
 
@@ -38,6 +50,10 @@ public record LabFlowOidcRoleMappingProperties(
             matches.add(LabFlowRole.TECHNICIAN);
         }
 
+        return matches;
+    }
+
+    private static LabFlowRole requireSingleRole(EnumSet<LabFlowRole> matches) {
         if (matches.size() != 1) {
             throw new IllegalArgumentException(
                     matches.isEmpty()

@@ -48,6 +48,23 @@ class LabFlowOidcRoleMappingPropertiesTest {
                 .hasMessageContaining("multiple LabFlow role assignments");
     }
 
+    @Test
+    void personalAssignmentTakesPriorityOverDirectGroups() {
+        LabFlowOidcRoleMappingProperties mapping = mapping(
+                List.of("zaka41a"),
+                List.of("lsit-2026/roles/labflow/lab-manager"),
+                List.of("lsit-2026/roles/labflow/technician")
+        );
+
+        assertThat(mapping.roleFor(
+                Set.of("zaka41a"),
+                Set.of(
+                        "lsit-2026/roles/labflow/lab-manager",
+                        "lsit-2026/roles/labflow/technician"
+                )
+        )).isEqualTo(LabFlowRole.BORROWER);
+    }
+
     private static LabFlowOidcRoleMappingProperties mapping(
             List<String> borrowers,
             List<String> managers,

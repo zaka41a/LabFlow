@@ -13,6 +13,8 @@ grep --fixed-strings --quiet -- 'admin_enabled       = true' "$infrastructure_fi
 grep --fixed-strings --quiet -- 'default     = "Standard_B2ats_v2"' "$variables_file"
 grep --fixed-strings --quiet -- 'az acr credential show' "$pipeline_file"
 grep --fixed-strings --quiet -- 'oidc_client_authentication_method' "$pipeline_file"
+grep --fixed-strings --quiet -- 'OIDC_BORROWER_IDENTITIES' "$pipeline_file"
+grep --fixed-strings --quiet -- 'LABFLOW_OIDC_BORROWER_IDENTITIES:' "$deployment_script"
 grep --fixed-strings --quiet -- '--scripts @ci/azure-deploy-vm.sh' "$pipeline_file"
 grep --fixed-strings --quiet -- 'Deployed LabFlow revision ${CI_COMMIT_SHA}.' "$pipeline_file"
 grep --fixed-strings --quiet -- 'expected_frontend_asset=' "$pipeline_file"
@@ -25,6 +27,7 @@ grep --fixed-strings --quiet -- 'docker --config "$docker_config" pull "$backend
 grep --fixed-strings --quiet -- 'docker --config "$docker_config" pull "$frontend_image"' "$deployment_script"
 grep --fixed-strings --quiet -- 'config --quiet' "$deployment_script"
 grep --fixed-strings --quiet -- 'up --detach --force-recreate --remove-orphans' "$deployment_script"
+grep --fixed-strings --quiet -- 'exec --no-TTY backend' "$deployment_script"
 grep --fixed-strings --quiet -- 'image_tag                  = "latest"' "$infrastructure_file"
 grep --fixed-strings --quiet -- 'ignore_changes = [custom_data]' "$infrastructure_file"
 

@@ -56,14 +56,20 @@ docker --config "$docker_config" pull "$backend_image"
 docker --config "$docker_config" pull "$frontend_image"
 
 sed -E -i.bak \
-  -e "s|^[[:space:]]*OIDC_CLIENT_AUTHENTICATION_METHOD:.*|            OIDC_CLIENT_AUTHENTICATION_METHOD: \"${oidc_client_authentication_method}\"|" \
+  -e "s|^[[:space:]]*OIDC_CLIENT_AUTHENTICATION_METHOD:.*|      OIDC_CLIENT_AUTHENTICATION_METHOD: \"${oidc_client_authentication_method}\"|" \
   -e "s|labflow-backend:[^[:space:]]+|labflow-backend:${revision}|" \
   -e "s|labflow-frontend:[^[:space:]]+|labflow-frontend:${revision}|" \
   "$compose_file"
-rm -f "${compose_file}.bak"
 
 grep --fixed-strings --quiet -- "$backend_image" "$compose_file"
 grep --fixed-strings --quiet -- "$frontend_image" "$compose_file"
+
+if ! DOCKER_CONFIG="$docker_config" docker compose --file "$compose_file" config --quiet; then
+  mv "${compose_file}.bak" "$compose_file"
+  printf '%s\n' 'The generated Docker Compose configuration is invalid.' >&2
+  exit 1
+fi
+rm -f "${compose_file}.bak"
 
 DOCKER_CONFIG="$docker_config" docker compose --file "$compose_file" \
   up --detach --force-recreate --remove-orphans

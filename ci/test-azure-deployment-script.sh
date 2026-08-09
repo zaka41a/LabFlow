@@ -52,9 +52,10 @@ sh "$deployment_script" \
 
 grep --fixed-strings --quiet -- "labflow-backend:${revision}" "$compose_file"
 grep --fixed-strings --quiet -- "labflow-frontend:${revision}" "$compose_file"
-grep --fixed-strings --quiet -- 'OIDC_CLIENT_AUTHENTICATION_METHOD: "client_secret_post"' "$compose_file"
+grep --fixed-strings --line-regexp --quiet -- '      OIDC_CLIENT_AUTHENTICATION_METHOD: "client_secret_post"' "$compose_file"
 grep --fixed-strings --quiet -- "pull labflowdev.azurecr.io/labflow-backend:${revision}" "$docker_log"
 grep --fixed-strings --quiet -- "pull labflowdev.azurecr.io/labflow-frontend:${revision}" "$docker_log"
+grep --fixed-strings --quiet -- 'config --quiet' "$docker_log"
 grep --fixed-strings --quiet -- 'up --detach --force-recreate --remove-orphans' "$docker_log"
 
 if LABFLOW_COMPOSE_FILE="$compose_file" PATH="${fake_bin}:$PATH" \

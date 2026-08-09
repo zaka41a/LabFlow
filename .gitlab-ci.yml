@@ -213,7 +213,7 @@ azure:deploy:
       registry_password_base64="$(printf '%s' "$registry_password" | base64 | tr -d '\n=')"
       unset registry_password
 
-      az vm run-command invoke \
+      deployment_output="$(az vm run-command invoke \
         --resource-group "$RESOURCE_GROUP" \
         --name "$VM_NAME" \
         --command-id RunShellScript \
@@ -225,7 +225,14 @@ azure:deploy:
         "$CI_COMMIT_SHA" \
         "$OIDC_CLIENT_AUTHENTICATION_METHOD" \
         --query 'value[0].message' \
-        --output tsv
+        --output tsv)"
+      printf '%s\n' "$deployment_output"
+
+      if ! grep --fixed-strings --quiet -- \
+        "Deployed LabFlow revision ${CI_COMMIT_SHA}." <<< "$deployment_output"; then
+        printf '%s\n' 'Azure Run Command did not confirm the requested revision.' >&2
+        exit 1
+      fi
   rules:
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $LABFLOW_AZURE_ENABLED == "true"'
 

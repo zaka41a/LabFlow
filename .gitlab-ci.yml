@@ -223,7 +223,11 @@ azure:deploy:
         "sed -i -E 's|^[[:space:]]*OIDC_CLIENT_AUTHENTICATION_METHOD:.*|            OIDC_CLIENT_AUTHENTICATION_METHOD: \"${OIDC_CLIENT_AUTHENTICATION_METHOD}\"|' /opt/labflow/compose.yaml" \
         "sed -i -E 's|(labflow-backend:)[^[:space:]]+|\\1${CI_COMMIT_SHA}|' /opt/labflow/compose.yaml" \
         "sed -i -E 's|(labflow-frontend:)[^[:space:]]+|\\1${CI_COMMIT_SHA}|' /opt/labflow/compose.yaml" \
-        "systemctl restart labflow.service" \
+        "grep --fixed-strings --quiet -- 'labflow-backend:${CI_COMMIT_SHA}' /opt/labflow/compose.yaml" \
+        "grep --fixed-strings --quiet -- 'labflow-frontend:${CI_COMMIT_SHA}' /opt/labflow/compose.yaml" \
+        "docker compose --file /opt/labflow/compose.yaml pull backend frontend" \
+        "docker compose --file /opt/labflow/compose.yaml up --detach --force-recreate --remove-orphans" \
+        "docker compose --file /opt/labflow/compose.yaml ps" \
         --query 'value[0].message' \
         --output tsv
   rules:
@@ -235,9 +239,38 @@ azure:verify:
     - job: azure:provision
       artifacts: true
     - azure:deploy
+    - job: frontend:test
+      artifacts: true
   script:
     - curl --fail --show-error --silent --retry 18 --retry-all-errors --retry-delay 10 "$APPLICATION_URL/healthz"
     - curl --fail --show-error --silent --retry 6 --retry-all-errors --retry-delay 5 "$APPLICATION_URL/api/auth/config"
+    - |
+      set -Eeuo pipefail
+
+      expected_frontend_asset="$(sed -nE 's|.*src="([^"]+\.js)".*|\1|p' frontend/dist/index.html)"
+      if [[ -z "$expected_frontend_asset" ]]; then
+        printf '%s\n' 'Unable to determine the tested frontend asset.' >&2
+        exit 1
+      fi
+
+      deployed_index="$(mktemp)"
+      callback_headers="$(mktemp)"
+      trap 'rm -f "$deployed_index" "$callback_headers"' EXIT
+
+      curl --fail --show-error --silent --retry 6 --retry-all-errors --retry-delay 5 \
+        --output "$deployed_index" "$APPLICATION_URL/"
+      if ! grep --fixed-strings --quiet -- "src=\"${expected_frontend_asset}\"" "$deployed_index"; then
+        printf 'Azure is not serving the tested frontend asset %s.\n' "$expected_frontend_asset" >&2
+        exit 1
+      fi
+
+      curl --show-error --silent --dump-header "$callback_headers" --output /dev/null \
+        "$APPLICATION_URL/login/oauth2/code/labflow?code=deployment-check&state=deployment-check"
+      if ! grep --fixed-strings --quiet -- 'login=oidc_error&reason=' "$callback_headers" || \
+         ! grep --fixed-strings --quiet -- '&reference=' "$callback_headers"; then
+        printf '%s\n' 'Azure is not serving the tested backend OIDC failure handler.' >&2
+        exit 1
+      fi
   environment:
     name: azure/development
     url: $APPLICATION_URL

@@ -15,8 +15,17 @@ grep --fixed-strings --quiet -- '--password-stdin' "$pipeline_file"
 grep --fixed-strings --quiet -- 'cloud-init status --wait' "$pipeline_file"
 grep --fixed-strings --quiet -- 'oidc_client_authentication_method' "$pipeline_file"
 grep --fixed-strings --quiet -- 'OIDC_CLIENT_AUTHENTICATION_METHOD:' "$pipeline_file"
+grep --fixed-strings --quiet -- 'docker compose --file /opt/labflow/compose.yaml pull backend frontend' "$pipeline_file"
+grep --fixed-strings --quiet -- '--force-recreate --remove-orphans' "$pipeline_file"
+grep --fixed-strings --quiet -- 'expected_frontend_asset=' "$pipeline_file"
+grep --fixed-strings --quiet -- 'login=oidc_error&reason=' "$pipeline_file"
 grep --fixed-strings --quiet -- 'image_tag                  = "latest"' "$infrastructure_file"
 grep --fixed-strings --quiet -- 'ignore_changes = [custom_data]' "$infrastructure_file"
+
+if grep --fixed-strings --quiet -- 'systemctl restart labflow.service' "$pipeline_file"; then
+  printf '%s\n' 'Deployments must explicitly pull and recreate immutable image revisions.' >&2
+  exit 1
+fi
 
 if grep --fixed-strings --quiet -- 'resource "azurerm_role_assignment"' "$infrastructure_file"; then
   printf '%s\n' 'The course identity cannot create Azure role assignments.' >&2

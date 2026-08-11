@@ -19,7 +19,8 @@
 
 :root {
   color: #162638;
-  background: #f1f3f5;
+  background: #f4f6f8;
+  color-scheme: light;
   font-family: var(--font-sans);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -35,7 +36,11 @@ body {
   min-width: 320px;
   min-height: 100vh;
   margin: 0;
-  background: #f1f3f5;
+  background: #f4f6f8;
+}
+
+#root {
+  min-height: 100vh;
 }
 
 button,

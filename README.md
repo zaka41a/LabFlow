@@ -85,6 +85,10 @@ Nginx liefert die Single Page Application aus und leitet API- sowie OAuth
 Callback-Routen an Spring Boot weiter. Domain und Application Services kennen
 weder HTTP noch Azure; REST und Blob Storage sind Adapter.
 
+Die [technische Architekturdokumentation](docs/architecture.md) beschreibt
+Bausteine, Klassenmodell, Prozessablauf, Persistenz, Sicherheit und Azure
+Deployment im Detail.
+
 ## Tech Stack
 
 | Bereich    | Technologie                                                      |
@@ -233,6 +237,7 @@ GET    /api/equipment/{id}/image
 
 GET    /api/loan-requests                     Borrower
 POST   /api/loan-requests                     Borrower
+GET    /api/loan-requests/{id}                Borrower
 POST   /api/loan-requests/{id}/submit         Borrower
 POST   /api/loan-requests/{id}/cancel         Borrower
 
@@ -243,6 +248,8 @@ POST   /api/approvals/{id}/reject             Lab Manager
 GET    /api/handover/pending                  Technician
 POST   /api/handover/{id}/checkout            Technician
 POST   /api/handover/{id}/return              Technician
+
+GET    /api/audit-events                      Lab Manager, Technician
 ```
 
 ## Konfiguration

@@ -109,10 +109,10 @@ Voraussetzungen: Docker Desktop und `curl`.
 ```bash
 git clone git@git-ce.rwth-aachen.de:lsit-2026/projects/labflow.git LabFlow
 cd LabFlow
-./div.sh
+./dev.sh
 ```
 
-`div.sh` baut alle Images, startet die Dienste und wartet auf die Health Checks.
+`dev.sh` baut alle Images, startet die Dienste und wartet auf die Health Checks.
 
 | Dienst                | Adresse                                       |
 | --------------------- | --------------------------------------------- |
@@ -340,7 +340,7 @@ LabFlow/
 ├── ci/
 ├── .gitlab-ci.yml
 ├── compose.yaml
-├── div.sh
+├── dev.sh
 └── stop.sh
 ```
 

@@ -18,7 +18,7 @@ jobs:
     environment: azure-development
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Sign in to Azure with OpenID Connect
         uses: azure/login@v2
